@@ -1,5 +1,5 @@
 {
-  "coreRevision": "4a0555d",
+  "coreRevision": "16cb85f",
   "commands": {
     "pnpm check": "passed",
     "pnpm bench": "passed",

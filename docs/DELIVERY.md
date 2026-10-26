@@ -101,8 +101,11 @@ Raw evidence: [verification](../reports/verification.json),
 - Raw Motion exports keep upstream ownership semantics. Resource-owning composables
   require an active component/effect scope; stopped upstream promises can stay pending.
 
-## Local delivery
+## Delivery
 
-Core revision when verified: `4a0555d`. Focused commits are merged into local `main`;
-`git log --oneline main` lists delivery history. No npm publication, push, deployment
-or remote repository creation was performed. Start the demo with `pnpm dev`.
+Core revision when verified: `16cb85f`. Focused commits are merged into local `main`;
+`git log --oneline main` lists delivery history. Commit identities use GitHub's
+`noreply` address; verified source trees are unchanged and original history is
+retained locally. The authorized GitHub destination is
+[vibejs/vibemotion](https://github.com/vibejs/vibemotion). No npm publication or
+deployment was performed. Start the demo with `pnpm dev`.
