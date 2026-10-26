@@ -35,7 +35,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           version-script: pnpm version-packages
-          publish-script: pnpm changeset publish --tag next
+          publish-script: pnpm changeset publish
           pr-title: 'chore: release'
           commit-message: 'chore: release'
         env:
