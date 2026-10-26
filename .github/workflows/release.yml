@@ -1,0 +1,42 @@
+name: Release
+
+# Runs only when a maintainer dispatches it from main. With pending changesets it opens or updates
+# the "chore: release" PR; with none it publishes @usevibejs/motion through npm trusted publishing
+# (OIDC) with provenance. It holds no npm token. It uses the workflow's own token, so CI does not
+# start on the release PR by itself: close and reopen the PR to run it.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'vibejs/vibemotion' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          github-token: ${{ github.token }}
+          version-script: pnpm version-packages
+          publish-script: pnpm changeset publish --tag next
+          pr-title: 'chore: release'
+          commit-message: 'chore: release'
+        env:
+          NPM_CONFIG_PROVENANCE: true
