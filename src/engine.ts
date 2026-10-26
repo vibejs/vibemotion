@@ -37,21 +37,28 @@ export function createAnimate(
 ): ScopedAnimate {
   const running = new Set<AnimationPlaybackControlsWithThen>();
   let disposed = false;
-  const resolve = (subject: unknown) => {
+  const resolve = (subject: unknown, keyframes: unknown) => {
     const scope = root === undefined ? undefined : toValue(root);
-    return typeof subject === 'string' && scope
-      ? Array.from(scope.querySelectorAll(subject))
+    const selector =
+      typeof subject === 'string' &&
+      keyframes !== null &&
+      typeof keyframes === 'object' &&
+      !Array.isArray(keyframes);
+    return selector && root !== undefined
+      ? scope
+        ? Array.from(scope.querySelectorAll(subject as string))
+        : []
       : subject;
   };
   const run = (...args: unknown[]): AnimationPlaybackControlsWithThen => {
     if (disposed) return new GroupAnimationWithThen([]);
     if (isSequence(args[0])) {
       args[0] = args[0].map((segment) =>
-        Array.isArray(segment) ? [resolve(segment[0]), ...segment.slice(1)] : segment,
+        Array.isArray(segment) ? [resolve(segment[0], segment[1]), ...segment.slice(1)] : segment,
       );
       args[1] = applySettings(settings, args[1] as object);
     } else {
-      args[0] = resolve(args[0]);
+      args[0] = resolve(args[0], args[1]);
       args[2] = applySettings(settings, args[2] as object);
     }
     // Motion never resolves `finished` for an animation that was stopped or interrupted by a newer

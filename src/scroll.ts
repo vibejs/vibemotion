@@ -12,7 +12,7 @@ import {
 export type InViewOptions = NonNullable<Parameters<typeof inView>[2]>;
 import { createAnimate } from './animate.ts';
 import { useMotionSettings } from './config.ts';
-import { bindElement, onDispose, type ElementTarget } from './internal.ts';
+import { bindElement, onDispose, requireScope, type ElementTarget } from './internal.ts';
 
 type ScrollOffset = NonNullable<NonNullable<Parameters<typeof scroll>[1]>['offset']>;
 
@@ -40,6 +40,7 @@ function bindTargets(
   setup: (elements: (Element | undefined)[]) => () => void,
   extra?: () => unknown,
 ): () => void {
+  requireScope();
   let cleanup: (() => void) | undefined;
   const stopWatch = watch(
     () => [...targets.map((t) => (t === undefined ? undefined : toValue(t))), extra?.()],
@@ -68,6 +69,7 @@ function bindTargets(
  * Feed them to `useTransform()` and `useMotionStyle()` for parallax and progress bars.
  */
 export function useScroll(options: UseScrollOptions = {}): ScrollValues {
+  requireScope();
   const scrollX = motionValue(0);
   const scrollY = motionValue(0);
   const scrollXProgress = motionValue(0);

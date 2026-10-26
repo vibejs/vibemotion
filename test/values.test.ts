@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   motionValue,
   useAnimate,
+  useScroll,
   useMotionAttrs,
   useMotionStyle,
   useMotionValue,
@@ -20,6 +21,12 @@ describe('Motion values and scope ownership', () => {
   it('does not silently allocate resources without an owner', () => {
     expect(() => useAnimate()).toThrow('effectScope');
     expect(() => useMotionValue(0)).toThrow('effectScope');
+    const input = motionValue(0);
+    const subscribe = vi.spyOn(input, 'on');
+    expect(() => useTransform(input, [0, 1], [0, 100])).toThrow('effectScope');
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(() => useScroll()).toThrow('effectScope');
+    input.destroy();
   });
   it('destroys owned values and leaves caller-owned inputs alive', async () => {
     mockReducedMotion(false);

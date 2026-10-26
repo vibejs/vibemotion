@@ -100,6 +100,7 @@ export function useTransform<O>(
   outputRange?: O[],
   options?: TransformOptions<O>,
 ): MotionValue<O> {
+  requireScope();
   if (typeof input === 'function') return own(transformValue(input));
   return own(mapValue(input, inputRange ?? [], outputRange ?? [], options));
 }

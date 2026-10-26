@@ -97,6 +97,17 @@ describe('useAnimate', () => {
     scope.stop();
   });
 
+  it('does not fall back to document selectors when a scoped ref is not mounted', () => {
+    const engine = vi.fn<(...args: unknown[]) => GroupAnimationWithThen>(
+      () => new GroupAnimationWithThen([]),
+    );
+    const root = shallowRef<HTMLElement | null>(null);
+    const scope = effectScope();
+    scope.run(() => createAnimate(useMotionSettings(), root, engine)('button', { opacity: 0 }));
+    expect(engine.mock.calls[0]![0]).toEqual([]);
+    scope.stop();
+  });
+
   it('stops running animations when the scope stops, and starts nothing afterwards', () => {
     const { animation } = fakeAnimation();
     const engine = vi.fn<(...args: unknown[]) => AnimationPlaybackControlsWithThen>(
