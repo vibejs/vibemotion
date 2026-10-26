@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.tsbuild/
+*.tgz
+artifacts/
+.DS_Store
+# Local task brief; contains machine-specific paths.
+VIBEMOTION_SPEC.md

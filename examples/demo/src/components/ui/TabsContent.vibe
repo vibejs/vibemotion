@@ -1,0 +1,28 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { inject } from '@usevibejs/ui';
+import type { ClassValue, Ref } from '@usevibejs/ui';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, value } = defineProps<{ class?: ClassValue; value: string }>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+const tabs = inject<{ model: Ref<string>; id: (part: 'tab' | 'panel', value: string) => string }>(
+  Symbol.for('vibecn.tabs'),
+)!;
+</script>
+
+<template>
+  <div
+    role="tabpanel"
+    tabindex="0"
+    data-slot="tabs-content"
+    :id="tabs.id('panel', value)"
+    :aria-labelledby="tabs.id('tab', value)"
+    :data-state="tabs.model.value === value ? 'active' : 'inactive'"
+    :hidden="tabs.model.value !== value"
+    v-bind="$attrs"
+    :class="cn('flex-1 outline-none', className)"
+  ><slot /></div>
+</template>

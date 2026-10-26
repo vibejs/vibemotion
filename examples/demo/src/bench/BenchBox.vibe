@@ -1,0 +1,13 @@
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import { useMotion } from '@usevibejs/motion';
+
+const { x } = defineProps<{ x: number }>();
+const box = useTemplateRef<HTMLElement>('box');
+// A reactive target: every prop change retargets the running spring.
+useMotion(box, { animate: () => ({ x }), transition: { type: 'spring', stiffness: 300, damping: 30 } });
+</script>
+
+<template>
+  <div ref="box" class="size-3 rounded-sm bg-primary/70"></div>
+</template>

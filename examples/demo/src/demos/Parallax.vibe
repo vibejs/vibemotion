@@ -1,0 +1,43 @@
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import { useMotionStyle, useScroll, useScrollAnimation, useTransform } from '@usevibejs/motion';
+
+const section = useTemplateRef<HTMLElement>('section');
+const back = useTemplateRef<HTMLElement>('back');
+const front = useTemplateRef<HTMLElement>('front');
+
+// Progress of the section through the viewport, from entering at the bottom to leaving at the top.
+const { scrollYProgress } = useScroll({ target: section, offset: ['start end', 'end start'] });
+useMotionStyle(back, { y: useTransform(scrollYProgress, [0, 1], [-40, 40]) });
+useMotionStyle(front, { y: useTransform(scrollYProgress, [0, 1], [60, -60]) });
+
+// A scroll-linked animation (native ScrollTimeline where supported).
+const title = useTemplateRef<HTMLElement>('title');
+useScrollAnimation(title, { opacity: [0.2, 1, 0.2], letterSpacing: ['0.2em', '0em', '0.2em'] }, { target: section, offset: ['start end', 'end start'] });
+
+// Horizontal scrolling in a custom container.
+const strip = useTemplateRef<HTMLElement>('strip');
+const stripBar = useTemplateRef<HTMLElement>('stripBar');
+const { scrollXProgress } = useScroll({ container: strip, axis: 'x' });
+useMotionStyle(stripBar, { scaleX: scrollXProgress });
+</script>
+
+<template>
+  <div class="space-y-6">
+    <div ref="section" data-testid="parallax" class="relative h-72 overflow-hidden rounded-lg border bg-gradient-to-b from-sky-950 to-indigo-950">
+      <div ref="back" data-testid="parallax-back" class="absolute inset-x-0 top-10 flex justify-around opacity-60">
+        <span v-for="n in 7" :key="n" class="size-1.5 rounded-full bg-white"></span>
+      </div>
+      <h3 ref="title" class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-3xl font-semibold text-white">Depth through scroll</h3>
+      <div ref="front" data-testid="parallax-front" class="absolute inset-x-6 bottom-0 h-24 rounded-t-[50%] bg-indigo-400/40"></div>
+    </div>
+    <div>
+      <div class="mb-2 h-1 overflow-hidden rounded-full bg-muted">
+        <div ref="stripBar" data-testid="strip-progress" class="h-full origin-left scale-x-0 bg-primary"></div>
+      </div>
+      <div ref="strip" data-testid="strip" class="flex snap-x gap-3 overflow-x-auto pb-2" tabindex="0" aria-label="Horizontal gallery">
+        <div v-for="n in 12" :key="n" class="grid h-28 w-44 shrink-0 snap-start place-items-center rounded-lg border bg-muted/50 text-sm text-muted-foreground">Slide {{ n }}</div>
+      </div>
+    </div>
+  </div>
+</template>

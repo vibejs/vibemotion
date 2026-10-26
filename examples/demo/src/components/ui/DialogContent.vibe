@@ -1,0 +1,38 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import type { ClassValue } from '@usevibejs/ui';
+import { injectOverlay, useModal } from '../../lib/overlay.ts';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, showCloseButton = true, dismissible = true } = defineProps<{
+  class?: ClassValue;
+  showCloseButton?: boolean;
+  /** Closes on a click outside the content. Escape always closes. */
+  dismissible?: boolean;
+}>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+const overlay = injectOverlay('Dialog');
+const dialog = useTemplateRef<HTMLDialogElement>('dialog');
+const { onClose, onClick } = useModal(dialog, overlay.open, () => dismissible);
+</script>
+
+<template>
+  <dialog
+    ref="dialog"
+    data-slot="dialog-content"
+    :id="overlay.id + '-content'"
+    :aria-labelledby="overlay.id + '-title'"
+    :aria-describedby="overlay.id + '-description'"
+    :data-state="overlay.open.value ? 'open' : 'closed'"
+    v-bind="$attrs"
+    :class="cn('m-auto w-full max-w-[calc(100%-2rem)] gap-4 rounded-lg border bg-background p-6 text-foreground shadow-lg outline-none open:grid sm:max-w-lg backdrop:bg-black/50 transition-[opacity,scale,overlay,display] transition-discrete duration-200 opacity-0 scale-95 open:opacity-100 open:scale-100 starting:open:opacity-0 starting:open:scale-95 backdrop:transition-[opacity,overlay,display] backdrop:transition-discrete backdrop:duration-200 backdrop:opacity-0 open:backdrop:opacity-100 starting:open:backdrop:opacity-0 motion-reduce:transition-none motion-reduce:backdrop:transition-none', className)"
+    @close="onClose"
+    @click="onClick"
+  >
+    <slot />
+    <button v-if="showCloseButton" type="button" data-slot="dialog-close-button" class="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4" @click="overlay.open.value = false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg><span class="sr-only">Close</span></button>
+  </dialog>
+</template>

@@ -1,0 +1,13 @@
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import { useDrag, useHover, usePress } from '@usevibejs/motion';
+
+const box = useTemplateRef<HTMLElement>('box');
+useHover(box);
+usePress(box);
+useDrag(box, { snapToOrigin: true });
+</script>
+
+<template>
+  <button ref="box" type="button" data-gesture-box class="size-6 rounded bg-primary/60" aria-label="Gesture target"></button>
+</template>

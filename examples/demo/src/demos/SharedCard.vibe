@@ -1,0 +1,88 @@
+<script setup lang="ts">
+import { computed, nextTick, ref, useTemplateRef } from '@usevibejs/ui';
+import { useLayoutMotion, usePresence } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+
+const products = [
+  { id: 'aurora', name: 'Aurora', price: '$129', hue: 260, blurb: 'A soft, gradient desk lamp with three warmth levels.' },
+  { id: 'ember', name: 'Ember', price: '$89', hue: 20, blurb: 'A compact speaker with a warm, room-filling sound.' },
+  { id: 'tide', name: 'Tide', price: '$149', hue: 200, blurb: 'A ceramic pour-over set with a matching carafe.' },
+];
+const selectedId = ref<string | null>(null);
+const selected = computed(() => products.find((p) => p.id === selectedId.value) ?? null);
+
+const scope = useTemplateRef<HTMLElement>('scope');
+// The card and its expanded panel share data-layout-id values: Motion morphs one into the other.
+const layout = useLayoutMotion(scope, { transition: { type: 'spring', stiffness: 320, damping: 32 } });
+
+const backdrop = useTemplateRef<HTMLElement>('backdrop');
+const backdropPresence = usePresence(() => selectedId.value !== null, backdrop, {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.2 },
+});
+
+let opener: HTMLElement | null = null;
+async function open(id: string, event: Event) {
+  opener = event.currentTarget as HTMLElement;
+  await layout.update(() => {
+    selectedId.value = id;
+  });
+  await nextTick();
+  scope.value?.querySelector<HTMLElement>('[data-testid="shared-close"]')?.focus();
+}
+async function close() {
+  const id = selectedId.value;
+  await layout.update(() => {
+    selectedId.value = null;
+  });
+  (scope.value?.querySelector<HTMLElement>(`[data-card="${id}"]`) ?? opener)?.focus();
+}
+const gradient = (hue: number) => `linear-gradient(135deg, oklch(0.7 0.13 ${hue}), oklch(0.45 0.12 ${hue + 50}))`;
+</script>
+
+<template>
+  <div ref="scope" class="relative min-h-80" @keydown.esc="close">
+    <ul class="grid gap-4 sm:grid-cols-3">
+      <li v-for="product in products" :key="product.id">
+        <button
+          v-if="selectedId !== product.id"
+          type="button"
+          :data-card="product.id"
+          :data-layout-id="`card-${product.id}`"
+          data-testid="shared-card"
+          class="block w-full overflow-hidden rounded-xl border bg-card text-left shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          @click="open(product.id, $event)"
+        >
+          <div :data-layout-id="`image-${product.id}`" class="h-28" :style="{ background: gradient(product.hue) }"></div>
+          <div class="flex items-center justify-between p-3">
+            <span :data-layout-id="`title-${product.id}`" class="font-medium">{{ product.name }}</span>
+            <span class="text-sm text-muted-foreground">{{ product.price }}</span>
+          </div>
+        </button>
+        <div v-else class="h-[172px] rounded-xl border border-dashed" aria-hidden="true"></div>
+      </li>
+    </ul>
+    <div v-if="backdropPresence.isPresent.value" ref="backdrop" class="absolute inset-0 rounded-xl bg-background/70 backdrop-blur-sm" @click="close"></div>
+    <article
+      v-if="selected"
+      :data-layout-id="`card-${selected.id}`"
+      data-testid="shared-detail"
+      role="dialog"
+      aria-modal="false"
+      :aria-label="selected.name"
+      class="absolute inset-x-0 top-0 mx-auto max-w-xl overflow-hidden rounded-2xl border bg-card shadow-xl"
+    >
+      <div :data-layout-id="`image-${selected.id}`" class="h-48" :style="{ background: gradient(selected.hue) }"></div>
+      <div class="space-y-3 p-5">
+        <div class="flex items-baseline justify-between">
+          <h3 :data-layout-id="`title-${selected.id}`" class="text-xl font-semibold">{{ selected.name }}</h3>
+          <span class="text-muted-foreground">{{ selected.price }}</span>
+        </div>
+        <p class="text-sm text-muted-foreground">{{ selected.blurb }}</p>
+        <Button data-testid="shared-close" variant="outline" @click="close">Close</Button>
+      </div>
+    </article>
+  </div>
+</template>

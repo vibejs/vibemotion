@@ -1,0 +1,43 @@
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import { useMotion } from '@usevibejs/motion';
+import Card from '../components/ui/Card.vibe';
+import CardHeader from '../components/ui/CardHeader.vibe';
+import CardTitle from '../components/ui/CardTitle.vibe';
+import CardDescription from '../components/ui/CardDescription.vibe';
+import CardContent from '../components/ui/CardContent.vibe';
+
+const { title, description, metric, index = 0 } = defineProps<{
+  title: string;
+  description: string;
+  metric: string;
+  index?: number;
+}>();
+
+const root = useTemplateRef<HTMLElement>('root');
+// Variants keep the states readable; the hover layer sits on top of the reveal.
+useMotion(root, {
+  variants: {
+    hidden: { opacity: 0, y: 24 },
+    shown: { opacity: 1, y: 0, transition: { type: 'spring', bounce: 0.2, delay: index * 0.06 } },
+  },
+  initial: 'hidden',
+  inView: 'shown',
+  viewport: { once: true, amount: 0.4 },
+  hover: { y: -4, transition: { type: 'spring', stiffness: 400, damping: 25 } },
+});
+</script>
+
+<template>
+  <div ref="root" data-testid="motion-card">
+    <Card class="h-full">
+      <CardHeader>
+        <CardTitle>{{ title }}</CardTitle>
+        <CardDescription>{{ description }}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p class="text-3xl font-semibold tracking-tight tabular-nums">{{ metric }}</p>
+      </CardContent>
+    </Card>
+  </div>
+</template>

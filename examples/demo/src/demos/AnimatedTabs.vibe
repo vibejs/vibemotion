@@ -1,0 +1,50 @@
+<script setup lang="ts">
+import { ref, useTemplateRef, watch } from '@usevibejs/ui';
+import { useAnimate, useLayoutMotion } from '@usevibejs/motion';
+import Tabs from '../components/ui/Tabs.vibe';
+import TabsList from '../components/ui/TabsList.vibe';
+import TabsTrigger from '../components/ui/TabsTrigger.vibe';
+import TabsContent from '../components/ui/TabsContent.vibe';
+
+const tabs = [
+  { value: 'overview', label: 'Overview', body: 'A summary of the project: deployments, regions and health at a glance.' },
+  { value: 'activity', label: 'Activity', body: 'Every change, who made it, and when, in one chronological feed.' },
+  { value: 'settings', label: 'Settings', body: 'Environment variables, domains and access control for this project.' },
+];
+const tab = ref('overview');
+
+const list = useTemplateRef<HTMLElement>('list');
+// The indicator is one shared layout id: the old one leaves, the new one morphs from its box.
+const layout = useLayoutMotion(list, { transition: { type: 'spring', stiffness: 500, damping: 40 } });
+// Vibecn's Tabs keeps its keyboard navigation; VibeMotion wraps the state change.
+function select(value: string) {
+  void layout.update(() => {
+    tab.value = value;
+  });
+}
+
+const panels = useTemplateRef<HTMLElement>('panels');
+const animate = useAnimate();
+watch(tab, () => {
+  const active = panels.value?.querySelector('[data-state="active"]');
+  if (active) animate(active, { opacity: [0, 1], y: [6, 0] }, { duration: 0.25, ease: 'easeOut' });
+}, { flush: 'post' });
+</script>
+
+<template>
+  <Tabs :model-value="tab" @update:model-value="select">
+    <div ref="list">
+      <TabsList data-testid="tabs-list">
+        <TabsTrigger v-for="item in tabs" :key="item.value" :value="item.value" class="data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+          <span v-if="tab === item.value" data-layout-id="tab-indicator" data-testid="tab-indicator" class="absolute inset-0 -z-10 rounded-md bg-background shadow-sm"></span>
+          {{ item.label }}
+        </TabsTrigger>
+      </TabsList>
+    </div>
+    <div ref="panels" class="mt-4">
+      <TabsContent v-for="item in tabs" :key="item.value" :value="item.value" class="rounded-lg border p-4 text-sm text-muted-foreground">
+        {{ item.body }}
+      </TabsContent>
+    </div>
+  </Tabs>
+</template>

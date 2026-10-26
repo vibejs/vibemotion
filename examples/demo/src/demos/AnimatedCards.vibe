@@ -1,0 +1,15 @@
+<script setup lang="ts">
+import MotionCard from './MotionCard.vibe';
+
+const cards = [
+  { title: 'Requests', description: 'Last 24 hours', metric: '1.28M' },
+  { title: 'p95 latency', description: 'Edge regions', metric: '84 ms' },
+  { title: 'Error rate', description: 'Rolling 1h', metric: '0.02%' },
+];
+</script>
+
+<template>
+  <div class="grid gap-4 sm:grid-cols-3">
+    <MotionCard v-for="(card, index) in cards" :key="card.title" :index="index" :title="card.title" :description="card.description" :metric="card.metric" />
+  </div>
+</template>

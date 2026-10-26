@@ -1,0 +1,45 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import type { ClassValue } from '@usevibejs/ui';
+import { injectOverlay } from '../../lib/overlay.ts';
+import Button from './Button.vibe';
+
+defineOptions({ inheritAttrs: false });
+
+const {
+  class: className,
+  variant = 'default',
+  size = 'default',
+  disabled = false,
+} = defineProps<{
+  class?: ClassValue;
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'link';
+  size?: 'default' | 'xs' | 'sm' | 'lg' | 'icon' | 'icon-xs' | 'icon-sm' | 'icon-lg';
+  disabled?: boolean;
+}>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+// Declared, so a listener from the parent runs before the overlay changes state.
+const emit = defineEmits<{ click: [event: MouseEvent] }>();
+const overlay = injectOverlay('Dialog');
+function onClick(event: MouseEvent): void {
+  emit('click', event);
+  overlay.open.value = true;
+}
+</script>
+
+<template>
+  <Button
+    data-slot="dialog-trigger"
+    aria-haspopup="dialog"
+    :aria-expanded="overlay.open.value"
+    :aria-controls="overlay.id + '-content'"
+    :data-state="overlay.open.value ? 'open' : 'closed'"
+    :data-anchor="overlay.id"
+    :variant="variant"
+    :size="size"
+    :disabled="disabled"
+    v-bind="$attrs"
+    :class="className"
+    @click="onClick"
+  ><slot /></Button>
+</template>

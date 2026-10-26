@@ -1,0 +1,12 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { provideOverlay } from '../../lib/overlay.ts';
+
+const open = defineModel<boolean>('open', { default: () => false });
+defineSlots<{ default?: (props: {}) => unknown }>();
+provideOverlay('Dialog', open);
+</script>
+
+<template>
+  <slot />
+</template>

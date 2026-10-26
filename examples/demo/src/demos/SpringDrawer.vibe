@@ -1,0 +1,65 @@
+<script setup lang="ts">
+import { nextTick, ref, useId, useTemplateRef, watch } from '@usevibejs/ui';
+import { useDrag, usePresence } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+import Separator from '../components/ui/Separator.vibe';
+
+const open = ref(false);
+const panel = useTemplateRef<HTMLElement>('panel');
+const backdrop = useTemplateRef<HTMLElement>('backdrop');
+const titleId = useId();
+
+const spring = { type: 'spring', stiffness: 380, damping: 34 } as const;
+// The panel stays rendered until its exit spring finishes; focus returns to the trigger.
+const presence = usePresence(open, panel, {
+  initial: { y: '100%' },
+  animate: { y: 0, transition: spring },
+  exit: { y: '100%', transition: { ...spring, stiffness: 420 } },
+});
+usePresence(open, backdrop, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.2 } });
+
+// Drag down to dismiss: far enough or fast enough closes, otherwise it springs back.
+// While exiting, the panel is inert, so it cannot be dragged.
+useDrag(panel, {
+  axis: 'y',
+  constraints: { top: 0, bottom: 0 },
+  elastic: { top: 0.05, bottom: 0.9 },
+  snapToOrigin: true,
+  onEnd: (_event, info) => {
+    if (info.offset.y > 120 || info.velocity.y > 600) open.value = false;
+  },
+});
+
+watch(open, async (value) => {
+  if (!value) return;
+  await nextTick();
+  panel.value?.querySelector<HTMLElement>('button')?.focus();
+});
+</script>
+
+<template>
+  <div>
+    <Button data-testid="drawer-open" :aria-expanded="open" @click="open = true">Open drawer</Button>
+    <p class="mt-3 text-xs text-muted-foreground">Toggle quickly: an interrupted exit reverses from where it is.</p>
+    <div v-if="presence.isPresent.value" class="fixed inset-0 z-50" @keydown.esc="open = false">
+      <div ref="backdrop" class="absolute inset-0 bg-black/40" @click="open = false"></div>
+      <div
+        ref="panel"
+        data-testid="drawer"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        class="absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-2xl border bg-background p-6 shadow-2xl"
+      >
+        <div class="mx-auto mb-4 h-1.5 w-12 cursor-grab rounded-full bg-muted" aria-hidden="true"></div>
+        <h3 :id="titleId" class="text-lg font-semibold">Spring drawer</h3>
+        <p class="mt-1 text-sm text-muted-foreground">Drag the panel down or press Escape to close. Content is inert while it exits.</p>
+        <Separator class="my-4" />
+        <div class="flex gap-2">
+          <Button data-testid="drawer-close" @click="open = false">Done</Button>
+          <Button variant="outline" @click="open = false">Cancel</Button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

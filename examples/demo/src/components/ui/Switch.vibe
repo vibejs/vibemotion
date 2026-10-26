@@ -1,0 +1,38 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import type { ClassValue } from '@usevibejs/ui';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, size = 'default', name, value, disabled, required } = defineProps<{
+  class?: ClassValue;
+  size?: 'default' | 'sm';
+  name?: string;
+  value?: string;
+  disabled?: boolean;
+  required?: boolean;
+}>();
+const model = defineModel<boolean>({ default: () => false });
+const input = useTemplateRef<HTMLInputElement>('input');
+defineExpose({ focus: () => input.value?.focus() });
+</script>
+
+<template>
+  <input
+    ref="input"
+    v-model="model"
+    type="checkbox"
+    role="switch"
+    data-slot="switch"
+    :data-size="size"
+    :data-state="model ? 'checked' : 'unchecked'"
+    :name="name"
+    :value="value"
+    :disabled="disabled"
+    :required="required"
+    v-bind="$attrs"
+    :class="cn('peer inline-flex shrink-0 cursor-default appearance-none items-center rounded-full border border-transparent bg-input shadow-xs transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 checked:bg-primary dark:bg-input/80 dark:checked:bg-primary data-[size=default]:h-[1.15rem] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 before:pointer-events-none before:block before:rounded-full before:bg-background before:ring-0 before:transition-transform data-[size=default]:before:size-4 data-[size=sm]:before:size-3 checked:before:translate-x-[calc(100%-2px)] dark:before:bg-foreground dark:checked:before:bg-primary-foreground motion-reduce:before:transition-none', className)"
+  />
+</template>

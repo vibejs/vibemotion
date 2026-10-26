@@ -1,0 +1,11 @@
+<script setup lang="ts">
+import RevealTile from './RevealTile.vibe';
+
+const tiles = Array.from({ length: 12 }, (_, i) => ({ hue: (i * 29) % 360, label: `Frame ${String(i + 1).padStart(2, '0')}` }));
+</script>
+
+<template>
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <RevealTile v-for="tile in tiles" :key="tile.label" :hue="tile.hue" :label="tile.label" />
+  </div>
+</template>

@@ -1,0 +1,68 @@
+<script setup lang="ts">
+import { onUnmounted, ref, useTemplateRef } from '@usevibejs/ui';
+import { useLayoutMotion, usePresenceList } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+
+interface Toast {
+  id: number;
+  tone: 'success' | 'error' | 'info';
+  title: string;
+}
+const toasts = ref<Toast[]>([]);
+let next = 1;
+const timers = new Map<number, ReturnType<typeof setTimeout>>();
+const messages = { success: 'Deployment ready', error: 'Build failed', info: 'New comment on #42' } as const;
+
+function push(tone: Toast['tone']) {
+  const id = next++;
+  toasts.value = [{ id, tone, title: messages[tone] }, ...toasts.value].slice(0, 5);
+  timers.set(id, setTimeout(() => dismiss(id), 5000));
+}
+function dismiss(id: number) {
+  clearTimeout(timers.get(id));
+  timers.delete(id);
+  toasts.value = toasts.value.filter((t) => t.id !== id);
+}
+onUnmounted(() => timers.forEach(clearTimeout));
+
+const stack = useTemplateRef<HTMLElement>('stack');
+// Remaining toasts slide into the gap with a layout animation once an exit finishes.
+const layout = useLayoutMotion(stack, { transition: { type: 'spring', stiffness: 500, damping: 40 } });
+const list = usePresenceList(toasts, {
+  key: (toast) => toast.id,
+  initial: { opacity: 0, y: -12, scale: 0.96 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, x: 48, transition: { duration: 0.18 } },
+  transition: { type: 'spring', stiffness: 520, damping: 34 },
+  layout,
+});
+const tones = {
+  success: 'border-emerald-500/40 bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100',
+  error: 'border-red-500/40 bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100',
+  info: 'border-sky-500/40 bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100',
+};
+</script>
+
+<template>
+  <div class="grid gap-6 md:grid-cols-[auto_1fr]">
+    <div class="flex flex-col gap-2">
+      <Button data-testid="toast-success" @click="push('success')">Success toast</Button>
+      <Button variant="destructive" @click="push('error')">Error toast</Button>
+      <Button variant="outline" @click="push('info')">Info toast</Button>
+    </div>
+    <ol ref="stack" data-testid="toast-stack" class="relative min-h-48 space-y-2" aria-live="polite" aria-label="Notifications">
+      <li
+        v-for="entry in list.items.value"
+        :key="entry.key"
+        :ref="(el) => list.bind(entry.key, el)"
+        data-layout
+        data-testid="toast"
+        :data-exiting="entry.exiting"
+        :class="['flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm', tones[entry.item.tone]]"
+      >
+        <span>{{ entry.item.title }} <span class="opacity-60">#{{ entry.item.id }}</span></span>
+        <button type="button" class="rounded px-1.5 text-xs opacity-70 hover:opacity-100" :aria-label="`Dismiss notification ${entry.item.id}`" data-testid="toast-dismiss" @click="dismiss(entry.item.id)">✕</button>
+      </li>
+    </ol>
+  </div>
+</template>

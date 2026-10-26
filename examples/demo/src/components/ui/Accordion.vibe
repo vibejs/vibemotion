@@ -1,0 +1,36 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { provide, toRef, useId } from '@usevibejs/ui';
+import type { ClassValue } from '@usevibejs/ui';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, type = 'single' } = defineProps<{
+  class?: ClassValue;
+  /** `single` opens one item at a time; `multiple` lets any number stay open. */
+  type?: 'single' | 'multiple';
+}>();
+/** The open item's value, with `type="single"`. */
+const model = defineModel<string>({ default: () => '' });
+/** The open items' values, with `type="multiple"`. */
+const values = defineModel<string[]>('values', { default: () => [] });
+defineSlots<{ default?: (props: {}) => unknown }>();
+const name = useId();
+
+provide(Symbol.for('vibecn.accordion'), {
+  // Items of a single accordion share a details name, so the browser closes the others.
+  name: toRef(() => (type === 'single' ? name : undefined)),
+  isOpen: (value: string) => (type === 'multiple' ? values.value.includes(value) : model.value === value),
+  toggle: (value: string, open: boolean) => {
+    if (type === 'multiple')
+      values.value = open ? [...values.value, value] : values.value.filter((item) => item !== value);
+    else if (open) model.value = value;
+    else if (model.value === value) model.value = '';
+  },
+});
+</script>
+
+<template>
+  <div data-slot="accordion" v-bind="$attrs" :class="cn('w-full', className)"><slot /></div>
+</template>

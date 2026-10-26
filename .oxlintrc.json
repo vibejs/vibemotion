@@ -1,0 +1,20 @@
+{
+  "plugins": ["typescript", "import", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "rules": {
+    "import/no-default-export": "error",
+    "typescript/no-explicit-any": "error",
+    "vitest/no-focused-tests": "error",
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }]
+  },
+  "overrides": [
+    {
+      "files": ["*.config.ts", "examples/*/*.config.ts"],
+      "rules": { "import/no-default-export": "off" }
+    }
+  ],
+  "ignorePatterns": ["dist/**", "coverage/**", "artifacts/**", "examples/*/dist/**"]
+}

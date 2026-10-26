@@ -1,0 +1,53 @@
+<script setup lang="ts">
+import { computed, useTemplateRef } from '@usevibejs/ui';
+import { useAnimate, useDrag } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+
+const area = useTemplateRef<HTMLElement>('area');
+const free = useTemplateRef<HTMLElement>('free');
+const rail = useTemplateRef<HTMLElement>('rail');
+const snap = useTemplateRef<HTMLElement>('snap');
+
+// Free drag inside the area, with elastic edges and momentum.
+const freeDrag = useDrag(free, { constraints: area, elastic: 0.2, momentum: true });
+// Horizontal only, hard pixel limits.
+const railDrag = useDrag(rail, { axis: 'x', constraints: { left: 0, right: 220 }, elastic: 0 });
+// Springs back to where it started on release, locking to the first direction moved.
+const snapDrag = useDrag(snap, { snapToOrigin: true, directionLock: true });
+
+const velocity = computed(() => {
+  const release = freeDrag.lastRelease.value;
+  return release ? Math.round(Math.hypot(release.velocity.x, release.velocity.y)) : 0;
+});
+
+const animate = useAnimate();
+function reset() {
+  // drag() moves elements through their x/y motion values, which animate() shares.
+  for (const el of [free.value, rail.value]) if (el) animate(el, { x: 0, y: 0 }, { type: 'spring', bounce: 0.2 });
+}
+</script>
+
+<template>
+  <div class="space-y-4">
+    <div ref="area" data-testid="drag-area" class="relative h-64 overflow-hidden rounded-lg border border-dashed bg-muted/30">
+      <div ref="free" data-testid="drag-free" class="grab absolute top-6 left-6 grid size-24 place-items-center rounded-xl bg-primary text-xs font-medium text-primary-foreground shadow-md" role="img" aria-label="Free draggable card">
+        Throw me
+      </div>
+      <div ref="snap" data-testid="drag-snap" class="grab absolute right-8 bottom-8 grid size-20 place-items-center rounded-xl border bg-background text-xs shadow-sm" role="img" aria-label="Card that snaps back">
+        Snap back
+      </div>
+    </div>
+    <div class="relative h-12 rounded-full bg-muted" style="width: 268px">
+      <div ref="rail" data-testid="drag-rail" class="grab absolute top-1 left-1 size-10 rounded-full bg-primary shadow" role="img" aria-label="Horizontal slider knob"></div>
+    </div>
+    <div class="flex flex-wrap items-center gap-4 font-mono text-xs text-muted-foreground">
+      <span>dragging <span data-testid="drag-state">{{ freeDrag.isDragging.value || railDrag.isDragging.value || snapDrag.isDragging.value }}</span></span>
+      <span>release velocity <span data-testid="drag-velocity">{{ velocity }}</span> px/s</span>
+      <span>locked axis <span>{{ snapDrag.lockedAxis.value ?? '—' }}</span></span>
+      <Button size="sm" variant="outline" @click="reset">Reset positions</Button>
+    </div>
+    <p class="text-xs text-muted-foreground">
+      Pointer, touch and pen input. Dragging is visual motion; to move data between lists, pair a drag-and-drop library with layout animations.
+    </p>
+  </div>
+</template>

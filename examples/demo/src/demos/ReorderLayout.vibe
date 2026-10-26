@@ -1,0 +1,61 @@
+<script setup lang="ts">
+import { ref, useTemplateRef } from '@usevibejs/ui';
+import { useLayoutMotion } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+
+interface Tile {
+  id: number;
+  hue: number;
+}
+const tiles = ref<Tile[]>(Array.from({ length: 9 }, (_, i) => ({ id: i + 1, hue: 200 + i * 14 })));
+const columns = ref(3);
+const expanded = ref<number | null>(null);
+
+const grid = useTemplateRef<HTMLElement>('grid');
+const layout = useLayoutMotion(grid, { transition: { type: 'spring', stiffness: 350, damping: 30 } });
+
+// Every mutation goes through layout.update(): snapshot, change state, wait for the DOM, animate.
+const shuffle = () =>
+  layout.update(() => {
+    const next = [...tiles.value];
+    for (let i = next.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [next[i], next[j]] = [next[j]!, next[i]!];
+    }
+    tiles.value = next;
+  });
+const sort = () => layout.update(() => void (tiles.value = [...tiles.value].sort((a, b) => a.id - b.id)));
+const reflow = () => layout.update(() => void (columns.value = columns.value === 3 ? 4 : columns.value === 4 ? 2 : 3));
+const toggle = (id: number) => layout.update(() => void (expanded.value = expanded.value === id ? null : id));
+</script>
+
+<template>
+  <div class="space-y-4">
+    <div class="flex flex-wrap gap-2">
+      <Button data-testid="reorder-shuffle" @click="shuffle">Shuffle</Button>
+      <Button variant="outline" @click="sort">Sort</Button>
+      <Button variant="outline" data-testid="reorder-columns" @click="reflow">Columns: {{ columns }}</Button>
+      <span class="self-center font-mono text-xs text-muted-foreground">animating <span data-testid="layout-animating">{{ layout.isAnimating.value }}</span></span>
+    </div>
+    <ul ref="grid" data-testid="reorder-grid" class="grid gap-3" :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }">
+      <li
+        v-for="tile in tiles"
+        :key="tile.id"
+        data-layout
+        :data-tile="tile.id"
+        :class="expanded === tile.id ? 'col-span-2 row-span-2' : ''"
+      >
+        <button
+          type="button"
+          class="grid size-full min-h-16 place-items-center rounded-lg text-sm font-semibold text-white focus-visible:ring-[3px] focus-visible:ring-ring/60 focus-visible:outline-none"
+          :style="{ background: `oklch(0.6 0.12 ${tile.hue})` }"
+          :aria-pressed="expanded === tile.id"
+          @click="toggle(tile.id)"
+        >
+          {{ tile.id }}
+        </button>
+      </li>
+    </ul>
+    <p class="text-xs text-muted-foreground">Click a tile to expand it; shuffle repeatedly to interrupt running animations.</p>
+  </div>
+</template>

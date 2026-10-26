@@ -1,0 +1,49 @@
+<script setup lang="ts">
+import { ref, useTemplateRef } from '@usevibejs/ui';
+import { useAnimate, useMotion } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+
+// Vibecn's Button renders a native <button>; VibeMotion targets that element, so keyboard
+// activation, focus rings and disabled states stay exactly as Vibecn ships them.
+const primary = useTemplateRef<HTMLElement>('primary');
+const outline = useTemplateRef<HTMLElement>('outline');
+const button = (wrapper: { value: HTMLElement | null }) => () =>
+  wrapper.value?.querySelector('button') ?? null;
+
+const tactile = {
+  hover: { scale: 1.04 },
+  press: { scale: 0.95 },
+  transition: { type: 'spring', stiffness: 500, damping: 30 },
+} as const;
+const primaryMotion = useMotion(button(primary), tactile);
+useMotion(button(outline), { ...tactile, hover: { y: -2 }, press: { y: 1, scale: 0.98 } });
+
+const likes = ref(0);
+const animate = useAnimate();
+const heart = useTemplateRef<SVGElement>('heart');
+function onLike() {
+  likes.value++;
+  if (heart.value) animate(heart.value, { scale: [1, 1.35, 1], rotate: [0, -12, 0] }, { duration: 0.35 });
+}
+</script>
+
+<template>
+  <div class="flex flex-wrap items-center gap-4">
+    <span ref="primary" class="inline-flex" data-testid="press-button">
+      <Button>Hover and press me</Button>
+    </span>
+    <span ref="outline" class="inline-flex">
+      <Button variant="outline">Lift on hover</Button>
+    </span>
+    <span class="inline-flex">
+      <Button variant="secondary" data-testid="like" @click="onLike">
+        <svg ref="heart" viewBox="0 0 24 24" class="size-4 fill-rose-500" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.4 3.2 5 6.6 5c2 0 3.3 1 4.4 2.4C12.1 6 13.4 5 15.4 5 18.8 5 21 8.4 19.5 11.8 17.5 16.4 12 21 12 21Z" /></svg>
+        Like · <span data-testid="like-count">{{ likes }}</span>
+      </Button>
+    </span>
+    <p class="w-full font-mono text-xs text-muted-foreground" aria-live="off">
+      hovered <span data-testid="hover-state">{{ primaryMotion.isHovered.value }}</span> · pressed
+      <span data-testid="press-state">{{ primaryMotion.isPressed.value }}</span>
+    </p>
+  </div>
+</template>

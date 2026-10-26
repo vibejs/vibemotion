@@ -1,0 +1,156 @@
+<script setup lang="ts">
+import { computed, nextTick, ref, shallowRef, useTemplateRef } from '@usevibejs/ui';
+import { stagger, useAnimate, useLayoutMotion } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+import BenchBox from '../bench/BenchBox.vibe';
+import GestureBox from '../bench/GestureBox.vibe';
+
+interface Result {
+  scenario: string;
+  elements: number;
+  setupMs: number;
+  frames: number;
+  meanFrameMs: number;
+  p95FrameMs: number;
+  maxFrameMs: number;
+  longFrames: number;
+}
+
+const count = ref(100);
+const mode = ref<'boxes' | 'reactive' | 'gestures'>('boxes');
+const target = ref(0);
+const results = shallowRef<Result[]>([]);
+const running = ref(false);
+const stage = useTemplateRef<HTMLElement>('stage');
+const animate = useAnimate(stage);
+const layout = useLayoutMotion(stage, { transition: { duration: 0.4 } });
+const order = ref<number[]>([]);
+
+/** Records requestAnimationFrame intervals while `work` runs, for `duration` ms. */
+function sample(duration: number, work: (elapsed: number) => void = () => {}): Promise<number[]> {
+  return new Promise((resolve) => {
+    const frames: number[] = [];
+    const start = performance.now();
+    let last = start;
+    const tick = (now: number) => {
+      frames.push(now - last);
+      last = now;
+      if (now - start < duration) {
+        work(now - start);
+        requestAnimationFrame(tick);
+      } else resolve(frames.slice(1));
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function summarize(scenario: string, setupMs: number, frames: number[]): Result {
+  const sorted = [...frames].sort((a, b) => a - b);
+  const mean = frames.reduce((a, b) => a + b, 0) / Math.max(frames.length, 1);
+  return {
+    scenario,
+    elements: count.value,
+    setupMs: +setupMs.toFixed(2),
+    frames: frames.length,
+    meanFrameMs: +mean.toFixed(2),
+    p95FrameMs: +(sorted[Math.floor(sorted.length * 0.95)] ?? 0).toFixed(2),
+    maxFrameMs: +(sorted[sorted.length - 1] ?? 0).toFixed(2),
+    longFrames: frames.filter((f) => f > 20).length,
+  };
+}
+
+async function prepare(n: number, nextMode: typeof mode.value) {
+  count.value = n;
+  mode.value = nextMode;
+  order.value = Array.from({ length: n }, (_, i) => i);
+  target.value = 0;
+  await nextTick();
+  await sample(100);
+}
+
+async function run(scenario: string) {
+  running.value = true;
+  const [name, size] = scenario.split(':') as [string, string];
+  const n = Number(size);
+  let setup = 0;
+  let frames: number[] = [];
+  if (name === 'animate') {
+    await prepare(n, 'boxes');
+    const t0 = performance.now();
+    animate('[data-box]', { x: [0, 200], opacity: [0.4, 1] }, { duration: 1, ease: 'easeInOut' });
+    setup = performance.now() - t0;
+    frames = await sample(1100);
+  } else if (name === 'stagger') {
+    await prepare(n, 'boxes');
+    const t0 = performance.now();
+    animate('[data-box]', { y: [12, 0], opacity: [0, 1] }, { delay: stagger(1 / n), duration: 0.4 });
+    setup = performance.now() - t0;
+    frames = await sample(1500);
+  } else if (name === 'retarget') {
+    await prepare(n, 'reactive');
+    let changes = 0;
+    frames = await sample(1500, () => {
+      const t0 = performance.now();
+      target.value = changes++ % 2 ? 0 : 200;
+      setup += performance.now() - t0;
+    });
+  } else if (name === 'interrupt') {
+    await prepare(n, 'boxes');
+    let i = 0;
+    frames = await sample(1500, () => {
+      const t0 = performance.now();
+      animate('[data-box]', { x: (i++ % 2) * 200 }, { type: 'spring', stiffness: 200, damping: 20 });
+      setup += performance.now() - t0;
+    });
+  } else if (name === 'layout') {
+    await prepare(n, 'boxes');
+    const t0 = performance.now();
+    for (let k = 0; k < 5; k++) {
+      await layout.update(() => {
+        order.value = [...order.value].reverse();
+      });
+      await sample(120);
+    }
+    setup = performance.now() - t0;
+    frames = await sample(600);
+  } else if (name === 'gestures') {
+    const t0 = performance.now();
+    await prepare(n, 'gestures');
+    setup = performance.now() - t0;
+    frames = await sample(1000);
+  }
+  results.value = [...results.value, summarize(scenario, setup, frames)];
+  running.value = false;
+  (window as unknown as { __bench: Result[] }).__bench = results.value;
+}
+
+const output = computed(() => JSON.stringify(results.value, null, 2));
+const scenarios = ['animate:100', 'animate:500', 'stagger:500', 'retarget:100', 'interrupt:100', 'layout:100', 'gestures:50'];
+</script>
+
+<template>
+  <div class="space-y-6">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Benchmarks</h1>
+      <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+        Reproducible workloads, measured in this browser with requestAnimationFrame intervals. Results depend on the device;
+        run <code class="font-mono">pnpm bench</code> for the headless Chromium numbers.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <Button v-for="scenario in scenarios" :key="scenario" size="sm" variant="outline" :disabled="running" :data-scenario="scenario" @click="run(scenario)">{{ scenario }}</Button>
+    </div>
+    <div ref="stage" data-testid="bench-stage" class="flex min-h-24 flex-wrap content-start gap-1 overflow-hidden rounded-lg border p-2">
+      <template v-if="mode === 'boxes'">
+        <div v-for="i in order" :key="i" data-box data-layout class="size-3 rounded-sm bg-primary/70"></div>
+      </template>
+      <template v-else-if="mode === 'reactive'">
+        <BenchBox v-for="i in count" :key="i" :x="target" />
+      </template>
+      <template v-else>
+        <GestureBox v-for="i in count" :key="i" />
+      </template>
+    </div>
+    <pre data-testid="bench-result" class="overflow-x-auto rounded-lg border bg-muted/40 p-4 text-xs">{{ output }}</pre>
+  </div>
+</template>

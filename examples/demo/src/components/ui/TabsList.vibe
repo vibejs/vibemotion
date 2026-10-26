@@ -1,0 +1,38 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { inject, nextTick, useTemplateRef, watch } from '@usevibejs/ui';
+import type { ClassValue, Ref } from '@usevibejs/ui';
+import { useRovingFocus } from '../../lib/collection.ts';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, variant = 'default' } = defineProps<{ class?: ClassValue; variant?: 'default' | 'line' }>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+const tabs = inject<{ model: Ref<string>; orientation: Ref<'horizontal' | 'vertical'>; automatic: Ref<boolean> }>(
+  Symbol.for('vibecn.tabs'),
+)!;
+const list = useTemplateRef<HTMLElement>('list');
+const roving = useRovingFocus(list, '[role="tab"]', () => ({ orientation: tabs.orientation.value }));
+watch(tabs.model, () => nextTick(roving.sync));
+
+function onKeydown(event: KeyboardEvent): void {
+  const tab = roving.onKeydown(event);
+  if (tab && tabs.automatic.value) tab.click();
+}
+const variants = { default: 'bg-muted', line: 'gap-1 bg-transparent' };
+</script>
+
+<template>
+  <div
+    ref="list"
+    role="tablist"
+    data-slot="tabs-list"
+    :data-variant="variant"
+    :aria-orientation="tabs.orientation.value"
+    v-bind="$attrs"
+    :class="cn('group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-[orientation=horizontal]/tabs:h-9 group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col data-[variant=line]:rounded-none', variants[variant], className)"
+    @keydown="onKeydown"
+    @focusin="roving.onFocusin"
+  ><slot /></div>
+</template>

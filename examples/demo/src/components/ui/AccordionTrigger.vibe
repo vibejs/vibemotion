@@ -1,0 +1,21 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import type { ClassValue } from '@usevibejs/ui';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className } = defineProps<{ class?: ClassValue }>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+</script>
+
+<template>
+  <summary
+    data-slot="accordion-trigger"
+    v-bind="$attrs"
+    :class="cn('flex flex-1 cursor-default list-none items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 group-data-[disabled]/accordion-item:pointer-events-none group-data-[disabled]/accordion-item:opacity-50 [&::-webkit-details-marker]:hidden', className)"
+  >
+    <slot />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pointer-events-none size-4 shrink-0 translate-y-0.5 text-muted-foreground transition-transform duration-200 group-open/accordion-item:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+  </summary>
+</template>

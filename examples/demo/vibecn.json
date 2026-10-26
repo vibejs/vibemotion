@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "paths": {
+    "components": "src/components/ui",
+    "lib": "src/lib",
+    "styles": "src/vibecn.css"
+  }
+}

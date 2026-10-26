@@ -1,0 +1,47 @@
+<script setup lang="ts">
+import { onMounted, useTemplateRef } from '@usevibejs/ui';
+import { stagger, useAnimate, useMotionControls } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+
+const items = ['Install the package', 'Wrap the router view', 'Add a presence', 'Bind a gesture', 'Link scroll progress', 'Animate a layout', 'Ship it'];
+
+const list = useTemplateRef<HTMLElement>('list');
+// Selectors resolve inside the component's own list, not the whole document.
+const animate = useAnimate(list);
+const controls = useMotionControls();
+
+function play() {
+  controls.set(
+    animate('li', { opacity: [0, 1], x: [-16, 0] }, { delay: stagger(0.07), duration: 0.45, ease: [0.22, 1, 0.36, 1] }),
+  );
+}
+onMounted(play);
+
+function setSpeed(rate: number) {
+  controls.speed.value = rate;
+}
+</script>
+
+<template>
+  <div class="grid gap-6 md:grid-cols-[1fr_auto]">
+    <ol ref="list" class="space-y-2" data-testid="stagger-list">
+      <li v-for="(item, index) in items" :key="item" class="flex items-center gap-3 rounded-md border bg-background px-3 py-2 text-sm">
+        <span class="grid size-6 place-items-center rounded-full bg-muted font-mono text-xs">{{ index + 1 }}</span>
+        {{ item }}
+      </li>
+    </ol>
+    <div class="flex flex-col gap-2 md:w-48">
+      <Button data-testid="stagger-replay" @click="play">Replay</Button>
+      <div class="grid grid-cols-2 gap-2">
+        <Button variant="outline" size="sm" data-testid="stagger-pause" @click="controls.pause()">Pause</Button>
+        <Button variant="outline" size="sm" data-testid="stagger-play" @click="controls.play()">Resume</Button>
+        <Button variant="outline" size="sm" @click="controls.complete()">Complete</Button>
+        <Button variant="outline" size="sm" @click="controls.cancel()">Cancel</Button>
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        <Button v-for="rate in [0.25, 1, 2]" :key="rate" size="xs" :variant="controls.speed.value === rate ? 'default' : 'ghost'" @click="setSpeed(rate)">{{ rate }}×</Button>
+      </div>
+      <p class="font-mono text-xs text-muted-foreground">state <span data-testid="stagger-state">{{ controls.state.value }}</span></p>
+    </div>
+  </div>
+</template>

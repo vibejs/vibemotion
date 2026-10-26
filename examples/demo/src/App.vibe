@@ -1,0 +1,57 @@
+<script setup lang="ts">
+import { computed, useTemplateRef } from '@usevibejs/ui';
+import { RouterLink, RouterView, useRouter } from '@usevibejs/ui/router';
+import { useReducedMotion, useRouteTransition, useScroll, useMotionStyle } from '@usevibejs/motion';
+import Switch from './components/ui/Switch.vibe';
+import Label from './components/ui/Label.vibe';
+import { motionPreference } from './preference.ts';
+
+const view = useTemplateRef<HTMLElement>('view');
+useRouteTransition(useRouter(), view, {
+  exit: { opacity: 0, y: 8 },
+  initial: { opacity: 0, y: -8 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.18, ease: 'easeOut' },
+});
+
+// Page scroll progress bar: a motion value bound to a transform, no Vibe.js render per frame.
+const bar = useTemplateRef<HTMLElement>('bar');
+const { scrollYProgress } = useScroll();
+useMotionStyle(bar, { scaleX: scrollYProgress });
+
+const reduced = useReducedMotion();
+const forceReduced = computed({
+  get: () => motionPreference.value === 'always',
+  set: (on: boolean) => (motionPreference.value = on ? 'always' : 'user'),
+});
+</script>
+
+<template>
+  <div class="min-h-dvh">
+    <div ref="bar" data-testid="scroll-progress" class="fixed inset-x-0 top-0 z-50 h-0.5 origin-left scale-x-0 bg-primary" aria-hidden="true"></div>
+    <header class="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
+      <div class="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
+        <RouterLink to="/" class="flex items-center gap-2 font-semibold tracking-tight">
+          <span class="grid size-6 place-items-center rounded-md bg-primary text-[11px] font-bold text-primary-foreground">VM</span>
+          VibeMotion
+        </RouterLink>
+        <nav class="flex items-center gap-1 text-sm" aria-label="Main">
+          <RouterLink to="/" class="rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground" exact-active-class="bg-muted !text-foreground">Demos</RouterLink>
+          <RouterLink to="/guide" class="rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground" exact-active-class="bg-muted !text-foreground">Guide</RouterLink>
+          <RouterLink to="/bench" class="rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground" exact-active-class="bg-muted !text-foreground">Benchmarks</RouterLink>
+        </nav>
+        <div class="ml-auto flex items-center gap-2 text-sm">
+          <Switch id="reduce-motion" v-model="forceReduced" data-testid="reduce-motion" />
+          <Label for="reduce-motion">Reduce motion</Label>
+          <span class="sr-only" aria-live="polite">{{ reduced ? 'Reduced motion on' : 'Reduced motion off' }}</span>
+        </div>
+      </div>
+    </header>
+    <main ref="view" id="main" class="mx-auto max-w-6xl px-4 py-10">
+      <RouterView />
+    </main>
+    <footer class="border-t py-6 text-center text-xs text-muted-foreground">
+      VibeMotion — Beautiful Motion for Vibe.js. Powered by Motion. MIT licensed.
+    </footer>
+  </div>
+</template>

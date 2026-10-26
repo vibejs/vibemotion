@@ -1,0 +1,68 @@
+<script setup lang="ts">
+import DemoCard from '../components/DemoCard.vibe';
+import AnimatedCards from '../demos/AnimatedCards.vibe';
+import AnimatedDialog from '../demos/AnimatedDialog.vibe';
+import AnimatedTabs from '../demos/AnimatedTabs.vibe';
+import ButtonInteractions from '../demos/ButtonInteractions.vibe';
+import DraggableCards from '../demos/DraggableCards.vibe';
+import Notifications from '../demos/Notifications.vibe';
+import Parallax from '../demos/Parallax.vibe';
+import ReorderLayout from '../demos/ReorderLayout.vibe';
+import ScrollReveal from '../demos/ScrollReveal.vibe';
+import SharedCard from '../demos/SharedCard.vibe';
+import SpringDrawer from '../demos/SpringDrawer.vibe';
+import SpringPlayground from '../demos/SpringPlayground.vibe';
+import StaggeredList from '../demos/StaggeredList.vibe';
+
+const toc = [
+  ['spring', 'Spring playground'],
+  ['buttons', 'Button interactions'],
+  ['cards', 'Animated cards'],
+  ['stagger', 'Staggered list'],
+  ['reveal', 'Scroll reveal'],
+  ['parallax', 'Parallax'],
+  ['drag', 'Draggable cards'],
+  ['drawer', 'Spring drawer'],
+  ['tabs', 'Animated tabs'],
+  ['shared', 'Shared element'],
+  ['reorder', 'Reorderable layout'],
+  ['toasts', 'Notifications'],
+  ['dialog', 'Animated dialog'],
+] as const;
+</script>
+
+<template>
+  <div class="space-y-10">
+    <section class="space-y-4 py-6">
+      <p class="font-mono text-xs tracking-widest text-muted-foreground uppercase">@usevibejs/motion</p>
+      <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">Beautiful Motion for Vibe.js</h1>
+      <p class="max-w-2xl text-lg text-muted-foreground">
+        Springs, gestures, scroll, layout and presence as composables. Vibe.js reactivity drives state; Motion's engine drives every frame.
+      </p>
+      <pre class="max-w-2xl overflow-x-auto rounded-lg border bg-muted/40 p-4 text-sm"><code>const card = useTemplateRef&lt;HTMLElement&gt;('card')
+useMotion(card, {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+  hover: { scale: 1.03 },
+  transition: { type: 'spring', bounce: 0.25 },
+})</code></pre>
+      <nav aria-label="Demos" class="flex flex-wrap gap-2 pt-2">
+        <a v-for="[id, label] in toc" :key="id" :href="`#${id}`" class="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground">{{ label }}</a>
+      </nav>
+    </section>
+
+    <DemoCard id="spring" title="1 · Spring playground" description="A spring-driven motion value bound straight to a transform. Retarget mid-flight; velocity carries over." :apis="['useSpring', 'useTransform', 'useMotionStyle']"><SpringPlayground /></DemoCard>
+    <DemoCard id="buttons" title="2 · Button interactions" description="Hover and press states on Vibecn buttons, with keyboard activation preserved." :apis="['useMotion', 'useAnimate']"><ButtonInteractions /></DemoCard>
+    <DemoCard id="cards" title="3 · Animated cards" description="Vibecn cards revealed with variants as they enter the viewport, lifting on hover." :apis="['useMotion', 'variants', 'inView']"><AnimatedCards /></DemoCard>
+    <DemoCard id="stagger" title="4 · Staggered list" description="A scoped animate() with stagger and reactive playback controls." :apis="['useAnimate', 'stagger', 'useMotionControls']"><StaggeredList /></DemoCard>
+    <DemoCard id="reveal" title="5 · Scroll reveal gallery" description="Each tile reveals once when a third of it is visible." :apis="['useMotion', 'inView']"><ScrollReveal /></DemoCard>
+    <DemoCard id="parallax" title="6 · Parallax and scroll progress" description="Element-relative scroll progress mapped to depth, a scroll-linked animation and a horizontal container." :apis="['useScroll', 'useTransform', 'useScrollAnimation']"><Parallax /></DemoCard>
+    <DemoCard id="drag" title="7 · Draggable cards" description="Constraints, elastic edges, momentum, axis and direction locking, snap to origin." :apis="['useDrag']"><DraggableCards /></DemoCard>
+    <DemoCard id="drawer" title="8 · Spring drawer" description="A bottom sheet that springs in, drags to dismiss and stays mounted until its exit ends." :apis="['usePresence', 'useDrag']"><SpringDrawer /></DemoCard>
+    <DemoCard id="tabs" title="9 · Animated tabs" description="Vibecn Tabs with a shared-layout indicator and animated panels." :apis="['useLayoutMotion', 'data-layout-id']"><AnimatedTabs /></DemoCard>
+    <DemoCard id="shared" title="10 · Shared-element expansion" description="A product card morphs into its detail panel and back." :apis="['useLayoutMotion', 'usePresence']"><SharedCard /></DemoCard>
+    <DemoCard id="reorder" title="11 · Reorderable layout" description="Shuffle, sort, change the grid and expand tiles; layout animations interrupt cleanly." :apis="['useLayoutMotion', 'data-layout']"><ReorderLayout /></DemoCard>
+    <DemoCard id="toasts" title="12 · Enter/exit notifications" description="A presence list: toasts stay rendered while they exit, and the stack closes the gap." :apis="['usePresenceList', 'useLayoutMotion']"><Notifications /></DemoCard>
+    <DemoCard id="dialog" title="13 · Animated dialog" description="Vibecn's native dialog, with staggered spring content." :apis="['useAnimate', 'stagger']"><AnimatedDialog /></DemoCard>
+  </div>
+</template>

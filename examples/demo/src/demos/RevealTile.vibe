@@ -1,0 +1,25 @@
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import { useMotion } from '@usevibejs/motion';
+
+const { hue, label } = defineProps<{ hue: number; label: string }>();
+const tile = useTemplateRef<HTMLElement>('tile');
+const motion = useMotion(tile, {
+  initial: { opacity: 0, scale: 0.92, filter: 'blur(6px)' },
+  inView: { opacity: 1, scale: 1, filter: 'blur(0px)' },
+  viewport: { once: true, amount: 0.35 },
+  transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+});
+</script>
+
+<template>
+  <figure
+    ref="tile"
+    data-testid="reveal-tile"
+    :data-in-view="motion.isInView.value"
+    class="flex aspect-[4/3] items-end rounded-lg p-3 text-sm font-medium text-white"
+    :style="{ background: `linear-gradient(135deg, oklch(0.62 0.14 ${hue}), oklch(0.42 0.12 ${hue + 40}))` }"
+  >
+    <figcaption>{{ label }}</figcaption>
+  </figure>
+</template>

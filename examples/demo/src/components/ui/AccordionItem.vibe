@@ -1,0 +1,43 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { inject } from '@usevibejs/ui';
+import type { ClassValue, Ref } from '@usevibejs/ui';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, value, disabled = false } = defineProps<{
+  class?: ClassValue;
+  value: string;
+  disabled?: boolean;
+}>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+const accordion = inject<{
+  name: Ref<string | undefined>;
+  isOpen: (value: string) => boolean;
+  toggle: (value: string, open: boolean) => void;
+}>(Symbol.for('vibecn.accordion'))!;
+
+function onToggle(event: Event): void {
+  const open = (event.target as HTMLDetailsElement).open;
+  if (open !== accordion.isOpen(value)) accordion.toggle(value, open);
+}
+// A disabled item keeps its state: its summary ignores clicks and keys.
+function onClick(event: MouseEvent): void {
+  if (disabled && (event.target as Element).closest('summary')) event.preventDefault();
+}
+</script>
+
+<template>
+  <details
+    data-slot="accordion-item"
+    :name="accordion.name.value"
+    :open="accordion.isOpen(value)"
+    :data-state="accordion.isOpen(value) ? 'open' : 'closed'"
+    :data-disabled="disabled || undefined"
+    v-bind="$attrs"
+    :class="cn('group/accordion-item border-b last:border-b-0 [interpolate-size:allow-keywords] [&::details-content]:block [&::details-content]:h-0 [&::details-content]:overflow-hidden [&::details-content]:transition-[height,content-visibility] [&::details-content]:transition-discrete [&::details-content]:duration-200 open:[&::details-content]:h-auto motion-reduce:[&::details-content]:transition-none', className)"
+    @toggle="onToggle"
+    @click="onClick"
+  ><slot /></details>
+</template>

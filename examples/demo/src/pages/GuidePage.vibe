@@ -1,0 +1,76 @@
+<script setup lang="ts">
+import { ref, useTemplateRef } from '@usevibejs/ui';
+import { usePresence, useReducedMotion, useViewTransition } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+
+const groups = [
+  { title: 'Animation', items: ['useAnimate', 'useMotion', 'useMotionControls'] },
+  { title: 'Motion values', items: ['useMotionValue', 'useSpring', 'useTransform', 'useMotionValueState', 'useMotionStyle', 'useMotionAttrs'] },
+  { title: 'Gestures', items: ['useHover', 'usePress', 'useDrag'] },
+  { title: 'Scroll and viewport', items: ['useScroll', 'useScrollAnimation', 'useInView'] },
+  { title: 'Layout and presence', items: ['useLayoutMotion', 'useViewTransition', 'usePresence', 'usePresenceList', 'useRouteTransition'] },
+  { title: 'Accessibility', items: ['useReducedMotion', 'provideMotionConfig', 'motionConfigKey'] },
+];
+
+// A minimal presence example, the same one the documentation's Presence page uses.
+const show = ref(true);
+const box = useTemplateRef<HTMLElement>('box');
+const presence = usePresence(show, box, {
+  initial: { opacity: 0, scale: 0.9 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.9 },
+  transition: { duration: 0.3 },
+});
+
+// View Transition API with graceful fallback: the update still runs where it is unsupported.
+const vt = useViewTransition();
+const flipped = ref(false);
+const supported = typeof document !== 'undefined' && 'startViewTransition' in document;
+const reduced = useReducedMotion();
+</script>
+
+<template>
+  <div class="space-y-10">
+    <section>
+      <h1 class="text-3xl font-semibold tracking-tight">Guide</h1>
+      <p class="mt-2 max-w-prose text-muted-foreground">
+        Install <code class="font-mono">@usevibejs/motion</code> next to <code class="font-mono">@usevibejs/ui</code>. Every composable binds to a template ref, follows element replacement and cleans up with the component. The full documentation lives in the repository's <code class="font-mono">docs/</code> folder.
+      </p>
+      <pre class="mt-4 max-w-xl rounded-lg border bg-muted/40 p-4 text-sm"><code>pnpm add @usevibejs/motion</code></pre>
+    </section>
+
+    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div v-for="group in groups" :key="group.title" class="rounded-xl border p-4">
+        <h2 class="text-sm font-semibold">{{ group.title }}</h2>
+        <ul class="mt-2 space-y-1 font-mono text-xs text-muted-foreground">
+          <li v-for="item in group.items" :key="item">{{ item }}</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="grid gap-6 md:grid-cols-2">
+      <div class="rounded-xl border p-5" data-demo="presence">
+        <h2 class="font-semibold">Presence</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Toggle rapidly: the exit reverses, and a stale exit never removes the new content.</p>
+        <Button class="mt-4" data-testid="presence-toggle" @click="show = !show">{{ show ? 'Hide' : 'Show' }}</Button>
+        <div class="mt-4 h-24">
+          <div v-if="presence.isPresent.value" ref="box" data-testid="presence-box" class="grid h-24 place-items-center rounded-lg bg-primary text-sm text-primary-foreground">
+            {{ presence.isExiting.value ? 'Exiting…' : 'Present' }}
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border p-5" data-demo="view-transition">
+        <h2 class="font-semibold">View Transitions</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          {{ supported ? 'This browser supports the View Transition API.' : 'No View Transition API here: the change applies instantly.' }}
+          {{ reduced ? 'Reduced motion is on, so it applies instantly.' : '' }}
+        </p>
+        <Button class="mt-4" variant="outline" data-testid="vt-toggle" @click="vt.start(() => { flipped = !flipped })">Swap layout</Button>
+        <div class="mt-4 flex gap-3" :class="flipped ? 'flex-row-reverse' : ''" data-testid="vt-row">
+          <div class="h-16 flex-1 rounded-lg bg-muted" style="view-transition-name: vt-a"></div>
+          <div class="h-16 w-16 rounded-lg bg-primary" style="view-transition-name: vt-b"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>

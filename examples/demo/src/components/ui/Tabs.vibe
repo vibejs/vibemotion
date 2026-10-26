@@ -1,0 +1,30 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import { provide, toRef, useId } from '@usevibejs/ui';
+import type { ClassValue } from '@usevibejs/ui';
+import { cn } from '../../lib/utils.ts';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, orientation = 'horizontal', activationMode = 'automatic' } = defineProps<{
+  class?: ClassValue;
+  orientation?: 'horizontal' | 'vertical';
+  /** `automatic` selects a tab when it receives focus; `manual` waits for Enter or Space. */
+  activationMode?: 'automatic' | 'manual';
+}>();
+const model = defineModel<string>({ default: () => '' });
+defineSlots<{ default?: (props: {}) => unknown }>();
+const id = useId();
+
+provide(Symbol.for('vibecn.tabs'), {
+  model,
+  orientation: toRef(() => orientation),
+  automatic: toRef(() => activationMode === 'automatic'),
+  // Values may contain any characters; ids may not.
+  id: (part: 'tab' | 'panel', value: string) => `${id}-${part}-${value.replace(/[^\w-]/g, '_')}`,
+});
+</script>
+
+<template>
+  <div data-slot="tabs" :data-orientation="orientation" v-bind="$attrs" :class="cn('group/tabs flex gap-2 data-[orientation=horizontal]:flex-col', className)"><slot /></div>
+</template>

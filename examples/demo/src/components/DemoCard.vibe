@@ -1,0 +1,26 @@
+<script setup lang="ts">
+const { id, title, description, apis } = defineProps<{
+  id: string;
+  title: string;
+  description: string;
+  apis: string[];
+}>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+</script>
+
+<template>
+  <section :id="id" :data-demo="id" class="scroll-mt-20 rounded-xl border bg-card text-card-foreground shadow-xs">
+    <header class="flex flex-wrap items-start justify-between gap-3 border-b px-5 py-4">
+      <div class="min-w-0">
+        <h2 class="text-base font-semibold tracking-tight">{{ title }}</h2>
+        <p class="mt-1 max-w-prose text-sm text-muted-foreground">{{ description }}</p>
+      </div>
+      <ul class="flex flex-wrap gap-1.5" aria-label="APIs used">
+        <li v-for="api in apis" :key="api" class="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">{{ api }}</li>
+      </ul>
+    </header>
+    <div class="p-5">
+      <slot />
+    </div>
+  </section>
+</template>

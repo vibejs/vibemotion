@@ -1,0 +1,18 @@
+<!-- Adapted from shadcn/ui under MIT. See vibecn.LICENSE. -->
+<script setup lang="ts">
+import type { ClassValue } from '@usevibejs/ui';
+import { cn } from '../../lib/utils.ts';
+import DialogClose from './DialogClose.vibe';
+
+defineOptions({ inheritAttrs: false });
+
+const { class: className, showCloseButton = false } = defineProps<{ class?: ClassValue; showCloseButton?: boolean }>();
+defineSlots<{ default?: (props: {}) => unknown }>();
+</script>
+
+<template>
+  <div data-slot="dialog-footer" v-bind="$attrs" :class="cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)">
+    <slot />
+    <DialogClose v-if="showCloseButton">Close</DialogClose>
+  </div>
+</template>

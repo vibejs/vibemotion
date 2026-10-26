@@ -1,0 +1,47 @@
+<script setup lang="ts">
+import { ref, useTemplateRef } from '@usevibejs/ui';
+import { stagger, useAnimate } from '@usevibejs/motion';
+import Button from '../components/ui/Button.vibe';
+import Dialog from '../components/ui/Dialog.vibe';
+import DialogContent from '../components/ui/DialogContent.vibe';
+import DialogDescription from '../components/ui/DialogDescription.vibe';
+import DialogFooter from '../components/ui/DialogFooter.vibe';
+import DialogHeader from '../components/ui/DialogHeader.vibe';
+import DialogTitle from '../components/ui/DialogTitle.vibe';
+import DialogTrigger from '../components/ui/DialogTrigger.vibe';
+
+const open = ref(false);
+const body = useTemplateRef<HTMLElement>('body');
+const animate = useAnimate(body);
+
+// Vibecn's native <dialog> keeps focus trapping, Escape and its own fade. VibeMotion adds a
+// staggered spring for the content once the dialog has opened.
+function onOpen(value: boolean) {
+  open.value = value;
+  if (value) {
+    requestAnimationFrame(() =>
+      animate('[data-stagger]', { opacity: [0, 1], y: [10, 0] }, { delay: stagger(0.05), type: 'spring', bounce: 0.25 }),
+    );
+  }
+}
+</script>
+
+<template>
+  <Dialog :open="open" @update:open="onOpen">
+    <DialogTrigger data-testid="dialog-open">Open dialog</DialogTrigger>
+    <DialogContent>
+      <div ref="body" data-testid="dialog-body" class="grid gap-4">
+        <DialogHeader>
+          <div data-stagger><DialogTitle>Invite your team</DialogTitle></div>
+          <div data-stagger><DialogDescription>Members get access to every project in this workspace.</DialogDescription></div>
+        </DialogHeader>
+        <ul class="grid gap-2 text-sm">
+          <li v-for="name in ['Ada Lovelace', 'Grace Hopper', 'Alan Turing']" :key="name" data-stagger class="rounded-md border px-3 py-2">{{ name }}</li>
+        </ul>
+        <DialogFooter>
+          <div data-stagger><Button @click="onOpen(false)">Send invites</Button></div>
+        </DialogFooter>
+      </div>
+    </DialogContent>
+  </Dialog>
+</template>
