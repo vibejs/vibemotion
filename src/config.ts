@@ -10,7 +10,7 @@ import {
   type MaybeRefOrGetter,
 } from '@usevibejs/ui';
 import type { AnimationOptions } from 'motion';
-import { onDispose } from './internal.ts';
+import { onDispose, requireScope } from './internal.ts';
 
 /**
  * - `'user'` follows the `prefers-reduced-motion` media query (default).
@@ -29,7 +29,8 @@ export interface MotionConfig {
 }
 
 /** The injection key behind `provideMotionConfig()`. `app.provide(motionConfigKey, config)` sets it app-wide. */
-export const motionConfigKey: InjectionKey<MaybeRefOrGetter<MotionConfig>> = Symbol('vibemotion.config');
+export const motionConfigKey: InjectionKey<MaybeRefOrGetter<MotionConfig>> =
+  Symbol('vibemotion.config');
 
 /** Sets the motion configuration for the calling component and its descendants. */
 export function provideMotionConfig(config: MaybeRefOrGetter<MotionConfig>): void {
@@ -67,6 +68,7 @@ export interface ResolvedMotion {
 }
 
 export function useMotionSettings(): ResolvedMotion {
+  requireScope();
   const source = hasInjectionContext() ? inject(motionConfigKey, {}) : {};
   const config = computed(() => toValue(source));
   subscribe();
@@ -89,7 +91,7 @@ export function useReducedMotion(): ComputedRef<boolean> {
 export function applySettings<O extends object>(settings: ResolvedMotion, options?: O): O {
   const { transition, skipAnimations } = settings.config.value;
   const merged: Record<string, unknown> = { ...transition, ...options };
-  if (settings.reduced.value) merged.reduceMotion = true;
+  merged.reduceMotion = settings.reduced.value;
   if (skipAnimations) merged.skipAnimations = true;
   return merged as O;
 }

@@ -1,0 +1,19 @@
+<script setup lang="ts">
+import { usePresenceList } from '../../src/index.ts';
+
+const { items, mode = 'sync' } = defineProps<{ items: string[]; mode?: 'sync' | 'wait' }>();
+const list = usePresenceList(() => items, {
+  key: (item) => item,
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.08 },
+  mode,
+});
+</script>
+
+<template>
+  <ul>
+    <li v-for="entry in list.items.value" :key="entry.key" :ref="(el) => list.bind(entry.key, el)" :data-exiting="entry.exiting">{{ entry.item }}</li>
+  </ul>
+</template>

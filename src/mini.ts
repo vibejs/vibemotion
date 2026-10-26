@@ -5,7 +5,7 @@ import type {
   DOMKeyframesDefinition,
   ElementOrSelector,
 } from 'motion';
-import { createAnimate } from './animate.ts';
+import { createAnimate } from './engine.ts';
 import { useMotionSettings } from './config.ts';
 import type { ElementTarget } from './internal.ts';
 
@@ -14,7 +14,11 @@ export type { MotionConfig, ReducedMotionSetting } from './config.ts';
 export type { ElementTarget } from './internal.ts';
 
 export interface MiniAnimate {
-  (element: ElementOrSelector, keyframes: DOMKeyframesDefinition, options?: AnimationOptions): AnimationPlaybackControlsWithThen;
+  (
+    element: ElementOrSelector,
+    keyframes: DOMKeyframesDefinition,
+    options?: AnimationOptions,
+  ): AnimationPlaybackControlsWithThen;
   stop(): void;
   readonly running: number;
 }
@@ -27,9 +31,17 @@ type Options = AnimationOptions & { reduceMotion?: boolean; skipAnimations?: boo
  * With reduced motion or `skipAnimations`, animations jump to their end state.
  */
 export function useAnimate(root?: ElementTarget): MiniAnimate {
-  const engine = (element: ElementOrSelector, keyframes: DOMKeyframesDefinition, options: Options = {}) => {
+  const engine = (
+    element: ElementOrSelector,
+    keyframes: DOMKeyframesDefinition,
+    options: Options = {},
+  ) => {
     const { reduceMotion, skipAnimations, ...rest } = options;
-    return animateMini(element, keyframes, reduceMotion || skipAnimations ? { ...rest, duration: 0, delay: 0 } : rest);
+    return animateMini(
+      element,
+      keyframes,
+      reduceMotion || skipAnimations ? { ...rest, duration: 0, delay: 0 } : rest,
+    );
   };
   return createAnimate(useMotionSettings(), root, engine as never) as unknown as MiniAnimate;
 }

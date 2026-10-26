@@ -87,8 +87,10 @@ export function usePress(
   return { isPressed, stop };
 }
 
-export interface UseDragOptions
-  extends Omit<DragOptions, 'constraints' | 'onStart' | 'onMove' | 'onEnd' | 'onTransitionEnd'> {
+export interface UseDragOptions extends Omit<
+  DragOptions,
+  'constraints' | 'onStart' | 'onMove' | 'onEnd' | 'onTransitionEnd'
+> {
   /** Pixel distances from the origin, or an element (or template ref) to stay within. */
   constraints?: DragOptions['constraints'] | ElementTarget;
   /** Disable dragging without removing the composable. */
@@ -109,19 +111,24 @@ export interface DragHandle extends GestureHandle {
 }
 
 const isElementConstraint = (value: unknown): boolean =>
-  value instanceof Element || (typeof value === 'object' && value !== null && 'value' in value) || typeof value === 'function';
+  (typeof Element !== 'undefined' && value instanceof Element) ||
+  (typeof value === 'object' && value !== null && 'value' in value) ||
+  typeof value === 'function';
 
 /**
  * Makes an element draggable with Motion's `drag()` gesture: axis and direction locking,
  * constraints in pixels or an element, elastic edges, momentum and snap-to-origin. The element
  * moves through its `x`/`y` transform, which `useAnimate()` can animate afterwards. Options are
  * reactive: a change rebinds the gesture without moving the element. With reduced motion,
- * momentum and snap-back become instant.
+ * momentum and animated snap-back are disabled.
  *
  * Drag here is visual: for sortable lists or moving data between containers, use a drag-and-drop
  * library and let VibeMotion animate the result.
  */
-export function useDrag(target: ElementTarget, options: MaybeRefOrGetter<UseDragOptions> = {}): DragHandle {
+export function useDrag(
+  target: ElementTarget,
+  options: MaybeRefOrGetter<UseDragOptions> = {},
+): DragHandle {
   const settings = useMotionSettings();
   const isDragging = shallowRef(false);
   const lockedAxis = shallowRef<'x' | 'y' | null>(null);
@@ -133,16 +140,19 @@ export function useDrag(target: ElementTarget, options: MaybeRefOrGetter<UseDrag
     const bind = () => {
       remove?.();
       remove = undefined;
-      const { constraints, disabled, onStart, onMove, onEnd, onSettle, onDirectionLock, ...rest } = toValue(options);
+      isDragging.value = false;
+      lockedAxis.value = null;
+      const { constraints, disabled, onStart, onMove, onEnd, onSettle, onDirectionLock, ...rest } =
+        toValue(options);
       if (disabled) return;
       const resolvedConstraints = isElementConstraint(constraints)
         ? (toValue(constraints as ElementTarget) ?? undefined)
         : (constraints as DragOptions['constraints']);
-      const reduced = settings.reduced.value;
+      const reduced = settings.reduced.value || settings.config.value.skipAnimations;
       remove = drag(element, {
         ...rest,
         constraints: resolvedConstraints,
-        ...(reduced ? { momentum: false } : {}),
+        ...(reduced ? { momentum: false, snapToOrigin: false } : {}),
         onStart: (event, info) => {
           isDragging.value = true;
           onStart?.(event, info);
@@ -173,7 +183,12 @@ export function useDrag(target: ElementTarget, options: MaybeRefOrGetter<UseDrag
   const stopOptions = watch(
     () => {
       const value = toValue(options);
-      return [value, isElementConstraint(value.constraints) ? toValue(value.constraints as ElementTarget) : null, settings.reduced.value];
+      return [
+        value,
+        isElementConstraint(value.constraints) ? toValue(value.constraints as ElementTarget) : null,
+        settings.reduced.value,
+        settings.config.value.skipAnimations,
+      ];
     },
     () => rebind?.(),
   );

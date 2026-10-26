@@ -1,0 +1,22 @@
+<script setup lang="ts">
+import { useTemplateRef } from '@usevibejs/ui';
+import { usePresence } from '../../src/index.ts';
+
+const { show, onExited } = defineProps<{ show: boolean; onExited?: () => void }>();
+const box = useTemplateRef<HTMLElement>('box');
+const presence = usePresence(() => show, box, {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.08 },
+  onExitComplete: () => onExited?.(),
+});
+defineExpose({ presence });
+</script>
+
+<template>
+  <div>
+    <button type="button" class="trigger">Trigger</button>
+    <div v-if="presence.isPresent.value" ref="box" class="box"><button type="button" class="inner">Inside</button></div>
+  </div>
+</template>

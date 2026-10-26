@@ -11,8 +11,8 @@ import {
   type SpringOptions,
   type TransformOptions,
 } from 'motion';
-import { useReducedMotion } from './config.ts';
-import { bindElement, onDispose, type ElementTarget } from './internal.ts';
+import { useMotionSettings } from './config.ts';
+import { bindElement, onDispose, requireScope, type ElementTarget } from './internal.ts';
 
 /**
  * Ownership: a motion value created by a VibeMotion composable is destroyed with the scope that
@@ -26,6 +26,7 @@ function own<T>(value: MotionValue<T>): MotionValue<T> {
 
 /** A Motion value, destroyed when the calling scope stops. Changing it never re-renders Vibe.js. */
 export function useMotionValue<T>(initial: T): MotionValue<T> {
+  requireScope();
   return own(motionValue(initial));
 }
 
@@ -54,13 +55,15 @@ export function useSpring(
   source: SpringSource,
   options: MaybeRefOrGetter<SpringOptions | undefined> = {},
 ): MotionValue<number> {
+  requireScope();
   const input = sourceValue(source);
   const initial = typeof input === 'number' ? input : input.get();
   const output = own(motionValue(initial));
-  const reduced = useReducedMotion();
+  const settings = useMotionSettings();
   let detach: (() => void) | undefined;
   watch(
-    () => [toValue(options), reduced.value] as const,
+    () =>
+      [toValue(options), settings.reduced.value || !!settings.config.value.skipAnimations] as const,
     ([spring, isReduced]) => {
       detach?.();
       detach = undefined;
@@ -102,11 +105,11 @@ export function useTransform<O>(
 }
 
 /**
- * Opts in to reactive observation of a motion value: a readonly ref updated on each change (at
- * most once per animation frame). Use it for text or logic; bind motion values to styles with
+ * Opts in to reactive observation of a motion value: a readonly ref updated on each change (each explicit set may emit). Use it for text or logic; bind motion values to styles with
  * `useMotionStyle()` instead, which skips Vibe.js rendering entirely.
  */
 export function useMotionValueState<T>(value: MotionValue<T>): Readonly<Ref<T>> {
+  requireScope();
   const state = shallowRef(value.get());
   const unsubscribe = value.on('change', (latest) => (state.value = latest));
   onDispose(unsubscribe);
@@ -129,7 +132,23 @@ function useEffect(
   let remove: (() => void) | undefined;
   const apply = () => {
     remove?.();
-    remove = current ? effect(current, toValue(values)) : undefined;
+    remove = undefined;
+    if (!current) return;
+    // Motion's effects accept MotionValues, not static scalars. Own only values we create here.
+    const owned: MotionValue[] = [];
+    const resolved = Object.fromEntries(
+      Object.entries(toValue(values)).map(([key, value]) => {
+        if (isMotionValue(value)) return [key, value];
+        const wrapped = motionValue(value);
+        owned.push(wrapped);
+        return [key, wrapped];
+      }),
+    );
+    const unbind = effect(current, resolved);
+    remove = () => {
+      unbind();
+      for (const value of owned) value.destroy();
+    };
   };
   const stopElement = bindElement(target, (element) => {
     current = element;
@@ -139,7 +158,8 @@ function useEffect(
       remove = current = undefined;
     };
   });
-  const stopValues = isRef(values) || typeof values === 'function' ? watch(() => toValue(values), apply) : undefined;
+  const stopValues =
+    isRef(values) || typeof values === 'function' ? watch(() => toValue(values), apply) : undefined;
   const stop = () => {
     stopValues?.();
     stopElement();

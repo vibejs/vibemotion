@@ -32,7 +32,8 @@ export function resolveTarget<V extends string>(
   variants: Partial<Variants<V>> | undefined,
 ): MotionTarget {
   if (!definition) return {};
-  if (typeof definition === 'object' && !Array.isArray(definition)) return definition as MotionTarget;
+  if (typeof definition === 'object' && !Array.isArray(definition))
+    return definition as MotionTarget;
   const names = (typeof definition === 'string' ? [definition] : definition) as readonly V[];
   const merged: MotionTarget = {};
   for (const name of names) {
@@ -44,7 +45,9 @@ export function resolveTarget<V extends string>(
 }
 
 /** Splits `transition` off a target. */
-export function splitTarget(target: MotionTarget): [DOMKeyframesDefinition, AnimationOptions | undefined] {
+export function splitTarget(
+  target: MotionTarget,
+): [DOMKeyframesDefinition, AnimationOptions | undefined] {
   const { transition, ...keyframes } = target;
   return [keyframes, transition];
 }
@@ -63,8 +66,10 @@ export function composeLayers(
   for (const { active, target } of layers) {
     const [keyframes, own] = splitTarget(target);
     for (const key of Object.keys(keyframes)) {
-      if (active) out[key] = (keyframes as Record<string, unknown>)[key];
-      else if (!(key in out)) {
+      if (active) {
+        const value = (keyframes as Record<string, unknown>)[key];
+        out[key] = Array.isArray(value) ? [...value] : value;
+      } else if (!(key in out)) {
         const fallback = (rest as Record<string, unknown>)[key] ?? restingValues[key];
         if (fallback !== undefined) out[key] = fallback;
       }

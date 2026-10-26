@@ -1,6 +1,6 @@
-import { shallowRef, type Ref, type ShallowRef } from '@usevibejs/ui';
+import { computed, shallowRef, type Ref, type ShallowRef } from '@usevibejs/ui';
 import type { AnimationPlaybackControls } from 'motion';
-import { onDispose } from './internal.ts';
+import { onDispose, requireScope } from './internal.ts';
 
 export type MotionPlayState = 'idle' | 'running' | 'paused' | 'finished';
 
@@ -34,6 +34,9 @@ export interface MotionControls {
 }
 
 export function useMotionControls(): MotionControls {
+  requireScope();
+  let disposed = false;
+  let owned: AnimationPlaybackControls | null = null;
   const animation = shallowRef<AnimationPlaybackControls | null>(null);
   const state = shallowRef<MotionPlayState>('idle');
   const speed = shallowRef(1);
@@ -52,7 +55,7 @@ export function useMotionControls(): MotionControls {
 
   const end = (method: 'stop' | 'cancel' | 'complete', next: MotionPlayState) => {
     const current = animation.value;
-    if (!current) return;
+    if (!current || disposed) return;
     generation++;
     current[method]();
     state.value = next;
@@ -61,20 +64,18 @@ export function useMotionControls(): MotionControls {
   const controls: MotionControls = {
     animation,
     state,
-    speed: {
-      get value() {
-        return speed.value;
-      },
-      set value(rate: number) {
+    speed: computed({
+      get: () => speed.value,
+      set: (rate: number) => {
         speed.value = rate;
-        if (animation.value) animation.value.speed = rate;
+        if (!disposed && animation.value) animation.value.speed = rate;
       },
-    } as Ref<number>,
+    }),
     get time() {
       return animation.value?.time ?? 0;
     },
     set time(seconds: number) {
-      if (animation.value) animation.value.time = seconds;
+      if (!disposed && animation.value) animation.value.time = seconds;
     },
     get duration() {
       return animation.value?.duration ?? 0;
@@ -83,7 +84,12 @@ export function useMotionControls(): MotionControls {
       return animation.value ? animation.value.finished.then(() => {}) : Promise.resolve();
     },
     set(next) {
+      if (disposed) {
+        next.stop();
+        return next;
+      }
       const id = ++generation;
+      owned = next;
       animation.value = next;
       if (speed.value !== 1) next.speed = speed.value;
       state.value = 'running';
@@ -92,13 +98,13 @@ export function useMotionControls(): MotionControls {
     },
     play() {
       const current = animation.value;
-      if (!current) return;
+      if (!current || disposed) return;
       if (state.value === 'finished' || state.value === 'idle') track(current, ++generation);
       current.play();
       state.value = 'running';
     },
     pause() {
-      if (!animation.value || state.value !== 'running') return;
+      if (disposed || !animation.value || state.value !== 'running') return;
       animation.value.pause();
       state.value = 'paused';
     },
@@ -107,8 +113,10 @@ export function useMotionControls(): MotionControls {
     complete: () => end('complete', 'finished'),
   };
   onDispose(() => {
+    disposed = true;
     generation++;
-    animation.value?.stop();
+    owned?.stop();
+    owned = null;
   });
   return controls;
 }

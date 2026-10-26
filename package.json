@@ -45,7 +45,7 @@
     "dev": "vite examples/demo --host 127.0.0.1",
     "build": "tsdown",
     "build:demo": "vite build examples/demo",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.tools.json --noEmit && pnpm --dir examples/demo exec tsc -b --runExternalCode",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.tools.json --noEmit && pnpm --dir examples/demo exec tsc -b --runExternalCode && pnpm --dir examples/demo exec tsc -b ../../test/tsconfig.json --runExternalCode",
     "lint": "oxlint --deny-warnings",
     "fmt": "oxfmt src test scripts benchmarks examples *.ts *.json .changeset",
     "fmt:check": "oxfmt --check src test scripts benchmarks examples *.ts *.json .changeset",

@@ -116,10 +116,22 @@ export function useScrollAnimation(
   const stop = bindTargets(
     [element, options.container, options.target],
     ([el, container, target]) => {
-      if (settings.reduced.value) return () => {};
-      const animation = animate(el!, keyframes, { ease: 'linear', ...options.transition });
+      if (settings.reduced.value || settings.config.value.skipAnimations) return () => {};
+      const animation = animate(el!, keyframes, {
+        duration: 1,
+        ease: 'linear',
+        ...options.transition,
+      });
       animation.pause();
-      const unlink = scroll(animation, {
+      // Motion 14.6's native timeline cache strongly retains element targets/containers.
+      // Use its shared callback tracker for replaceable elements, and native linking for page scroll.
+      const link =
+        options.container !== undefined || options.target !== undefined
+          ? (progress: number) => {
+              animation.time = progress * animation.duration;
+            }
+          : animation;
+      const unlink = scroll(link, {
         container: container as HTMLElement | undefined,
         target,
         offset: options.offset,
@@ -130,7 +142,7 @@ export function useScrollAnimation(
         animation.cancel();
       };
     },
-    () => settings.reduced.value,
+    () => [settings.reduced.value, settings.config.value.skipAnimations],
   );
   return { stop };
 }
@@ -176,6 +188,7 @@ export function useInView(
     return () => {
       remove?.();
       remove = undefined;
+      if (!once) isInView.value = false;
     };
   });
   return { isInView, stop };

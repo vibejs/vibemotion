@@ -1,4 +1,12 @@
-import { getCurrentScope, onScopeDispose, toValue, watch, type MaybeRefOrGetter } from '@usevibejs/ui';
+import {
+  getCurrentScope,
+  isRef,
+  nextTick,
+  onScopeDispose,
+  toValue,
+  watch,
+  type MaybeRefOrGetter,
+} from '@usevibejs/ui';
 
 /**
  * An element, a ref or template ref holding one, or a getter returning one. `null` and
@@ -6,9 +14,16 @@ import { getCurrentScope, onScopeDispose, toValue, watch, type MaybeRefOrGetter 
  */
 export type ElementTarget<E extends Element = Element> = MaybeRefOrGetter<E | null | undefined>;
 
-/** Runs `fn` when the active Vibe.js scope stops. Outside a scope the caller owns `stop()`. */
+/** Requires an owner before allocating a Motion resource. */
+export function requireScope(): void {
+  if (!getCurrentScope()?.active)
+    throw motionError('Call composables in component setup or an active effectScope().run().');
+}
+
+/** Registers cleanup with the active public Vibe.js scope. */
 export function onDispose(fn: () => void): void {
-  if (getCurrentScope()) onScopeDispose(fn);
+  requireScope();
+  onScopeDispose(fn);
 }
 
 /**
@@ -20,6 +35,7 @@ export function bindElement<E extends Element>(
   target: ElementTarget<E>,
   setup: (element: E) => (() => void) | void,
 ): () => void {
+  requireScope();
   let cleanup: (() => void) | void;
   let active = true;
   const release = () => {
@@ -41,7 +57,13 @@ export function bindElement<E extends Element>(
     stopWatch();
     release();
   };
-  onDispose(stop);
+  onDispose(() => {
+    stop();
+    if (isRef(target))
+      void nextTick(() => {
+        void target.value;
+      });
+  });
   return stop;
 }
 
@@ -54,9 +76,14 @@ export function motionError(message: string): Error {
 export function sameTarget(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
-  try {
-    return JSON.stringify(a) === JSON.stringify(b);
-  } catch {
-    return false;
-  }
+  const left = Object.keys(a);
+  const right = Object.keys(b);
+  return (
+    left.length === right.length &&
+    left.every(
+      (key) =>
+        Object.hasOwn(b, key) &&
+        sameTarget((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
+    )
+  );
 }

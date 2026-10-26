@@ -25,7 +25,13 @@ export {
 
 // Gestures
 export { useDrag, useHover, usePress } from './gestures.ts';
-export type { DragHandle, GestureHandle, HoverOptions, PressOptions, UseDragOptions } from './gestures.ts';
+export type {
+  DragHandle,
+  GestureHandle,
+  HoverOptions,
+  PressOptions,
+  UseDragOptions,
+} from './gestures.ts';
 
 // Scroll and viewport
 export { useInView, useScroll, useScrollAnimation } from './scroll.ts';

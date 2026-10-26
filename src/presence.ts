@@ -41,7 +41,8 @@ const FOCUSABLE =
 /** Shared enter/exit animation logic of the presence composables. */
 function createPresenceAnimator<V extends string>(options: PresenceAnimationOptions<V>) {
   const animate = createAnimate(useMotionSettings());
-  const resolve = (definition: TargetOrVariant<V> | undefined) => resolveTarget(definition, options.variants);
+  const resolve = (definition: TargetOrVariant<V> | undefined) =>
+    resolveTarget(definition, options.variants);
   const [initial] = splitTarget(resolve(options.initial));
   const run = (element: AnimatedElement, target: MotionTarget, from?: MotionTarget) => {
     const [keyframes, transition] = splitTarget(target);
@@ -53,7 +54,12 @@ function createPresenceAnimator<V extends string>(options: PresenceAnimationOpti
     /** Animates from `initial` to `animate`; `instant` jumps there (no appear animation). */
     enter(element: AnimatedElement, instant: boolean): AnimationPlaybackControlsWithThen {
       const target = resolve(options.animate);
-      if (instant) return animate(element, splitTarget(target)[0] as never, { duration: 0, delay: 0, type: false } as AnimationOptions);
+      if (instant)
+        return animate(
+          element,
+          splitTarget(target)[0] as never,
+          { duration: 0, delay: 0, type: false } as AnimationOptions,
+        );
       return run(element, target, initial);
     },
     /** Animates back to `animate` from wherever an interrupted exit left the element. */
@@ -63,13 +69,30 @@ function createPresenceAnimator<V extends string>(options: PresenceAnimationOpti
 }
 
 /** Exiting content cannot be focused, clicked or read by assistive technology. */
+const exitingAttributes = new WeakMap<
+  AnimatedElement,
+  { inert: string | null; hidden: string | null }
+>();
 function setExiting(element: AnimatedElement, exiting: boolean): void {
   if (exiting) {
+    if (!exitingAttributes.has(element))
+      exitingAttributes.set(element, {
+        inert: element.getAttribute('inert'),
+        hidden: element.getAttribute('aria-hidden'),
+      });
     element.setAttribute('inert', '');
     element.setAttribute('aria-hidden', 'true');
   } else {
-    element.removeAttribute('inert');
-    element.removeAttribute('aria-hidden');
+    const saved = exitingAttributes.get(element);
+    if (!saved) return;
+    for (const [key, value] of [
+      ['inert', saved.inert],
+      ['aria-hidden', saved.hidden],
+    ] as const) {
+      if (value === null) element.removeAttribute(key);
+      else element.setAttribute(key, value);
+    }
+    exitingAttributes.delete(element);
   }
 }
 
@@ -128,6 +151,11 @@ export function usePresence<const V extends string = string>(
     }
   };
   if (isPresent.value) rememberFocus();
+  // A completion arriving after the scope ended must not touch state or call back.
+  onDispose(() => {
+    generation++;
+    if (element) setExiting(element, false);
+  });
 
   const finishEnter = (animation: AnimationPlaybackControlsWithThen, id: number) =>
     animation.finished.then(() => {
@@ -140,6 +168,9 @@ export function usePresence<const V extends string = string>(
     void finishEnter(animator.enter(el, firstRender && !appear), id);
     firstRender = false;
     return () => {
+      generation++;
+      animator.animate.stop();
+      setExiting(el, false);
       if (element === el) element = undefined;
     };
   });
@@ -191,7 +222,10 @@ export interface PresenceEntry<T> {
   readonly exiting: boolean;
 }
 
-export interface UsePresenceListOptions<T, V extends string = string> extends PresenceAnimationOptions<V> {
+export interface UsePresenceListOptions<
+  T,
+  V extends string = string,
+> extends PresenceAnimationOptions<V> {
   /** A stable identity for each item, also used as the `:key` of the `v-for`. */
   key: (item: T) => PropertyKey;
   /**
@@ -227,7 +261,15 @@ export function usePresenceList<T, const V extends string = string>(
 ): PresenceList<T> {
   const animator = createPresenceAnimator(options);
   const { key, mode = 'sync', appear = false, layout } = options;
-  const entries = (list: readonly T[]) => list.map((item) => ({ key: key(item), item, exiting: false }));
+  const entries = (list: readonly T[]) => {
+    const seen = new Set<PropertyKey>();
+    return list.map((item) => {
+      const id = key(item);
+      if (seen.has(id)) throw new Error(`[VibeMotion] Duplicate presence key "${String(id)}".`);
+      seen.add(id);
+      return { key: id, item, exiting: false };
+    });
+  };
   const items = shallowRef<readonly PresenceEntry<T>[]>(entries(toValue(source)));
   const elements = new Map<PropertyKey, AnimatedElement>();
   const generations = new Map<PropertyKey, number>();
@@ -237,7 +279,12 @@ export function usePresenceList<T, const V extends string = string>(
     return next;
   };
   let disposed = false;
-  onDispose(() => (disposed = true));
+  onDispose(() => {
+    disposed = true;
+    for (const element of elements.values()) setExiting(element, false);
+    elements.clear();
+    generations.clear();
+  });
   // Items on the first render skip the enter animation unless `appear` is set.
   const initialKeys = new Set(appear ? [] : items.value.map((entry) => entry.key));
   void nextTick(() => initialKeys.clear());
@@ -250,7 +297,7 @@ export function usePresenceList<T, const V extends string = string>(
   const merge = (previous: readonly PresenceEntry<T>[], list: readonly T[]) => {
     const next: PresenceEntry<T>[] = entries(list);
     const keys = new Set(next.map((entry) => entry.key));
-    // ponytail: O(n²) reinsertion of exiting entries; index maps if lists grow past ~1000 items.
+    // Retain exits next to their previous surviving neighbour.
     previous.forEach((entry, index) => {
       if (keys.has(entry.key)) return;
       let at = 0;
@@ -275,10 +322,15 @@ export function usePresenceList<T, const V extends string = string>(
     const element = elements.get(entry.key);
     const remove = () => {
       if (generations.get(entry.key) !== id || disposed) return;
+      if (element) setExiting(element, false);
       elements.delete(entry.key);
       generations.delete(entry.key);
       const remaining = items.value.filter((candidate) => candidate.key !== entry.key);
-      commit(mode === 'wait' && !remaining.some((e) => e.exiting) ? merge(remaining, toValue(source)) : remaining);
+      commit(
+        mode === 'wait' && !remaining.some((e) => e.exiting)
+          ? merge(remaining, toValue(source))
+          : remaining,
+      );
       options.onExitComplete?.(entry.key);
     };
     if (!element) return remove();
@@ -292,7 +344,9 @@ export function usePresenceList<T, const V extends string = string>(
     const index = list.findIndex((entry) => entry.key === from);
     for (const neighbour of [list[index + 1], list[index - 1]]) {
       const element = neighbour && neighbour.key !== from ? elements.get(neighbour.key) : undefined;
-      const focusable = element?.matches(FOCUSABLE) ? element : element?.querySelector<HTMLElement>(FOCUSABLE);
+      const focusable = element?.matches(FOCUSABLE)
+        ? element
+        : element?.querySelector<HTMLElement>(FOCUSABLE);
       if (focusable instanceof HTMLElement) return focusable.focus({ preventScroll: true });
     }
   };
@@ -302,7 +356,9 @@ export function usePresenceList<T, const V extends string = string>(
     (list) => {
       const previous = items.value;
       const next = merge(previous, list);
-      const wasExiting = new Set(previous.filter((entry) => entry.exiting).map((entry) => entry.key));
+      const wasExiting = new Set(
+        previous.filter((entry) => entry.exiting).map((entry) => entry.key),
+      );
       commit(next);
       for (const entry of next) {
         if (entry.exiting && !wasExiting.has(entry.key)) exit(entry);
@@ -322,6 +378,7 @@ export function usePresenceList<T, const V extends string = string>(
   return {
     items,
     bind(k, value) {
+      if (disposed) return;
       if (!(value instanceof HTMLElement || value instanceof SVGElement)) {
         // `null` when the element is removed: forget it once the entry is gone.
         if (!items.value.some((entry) => entry.key === k)) elements.delete(k);

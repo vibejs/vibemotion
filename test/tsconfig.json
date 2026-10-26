@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "../.tsbuild/test.tsbuildinfo"
+  },
+  "contentMappers": [
+    {
+      "package": "@usevibejs/language-tools",
+      "extensions": [".vibe"]
+    }
+  ],
+  "include": ["../src", "./**/*.ts", "./**/*.vibe"],
+  "exclude": []
+}

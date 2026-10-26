@@ -1,74 +1,17 @@
-import { toValue } from '@usevibejs/ui';
-import {
-  animate as motionAnimate,
-  GroupAnimationWithThen,
-  type createScopedAnimate,
-  type AnimationPlaybackControlsWithThen,
-} from 'motion';
-import { applySettings, useMotionSettings, type ResolvedMotion } from './config.ts';
-import { onDispose, type ElementTarget } from './internal.ts';
+import { animate as motionAnimate } from 'motion';
+import type { AnimationPlaybackControlsWithThen } from 'motion';
+import { useMotionSettings, type ResolvedMotion } from './config.ts';
+import type { ElementTarget } from './internal.ts';
+import { createAnimate as createEngine, type ScopedAnimate } from './engine.ts';
+export type { AnimateFunction, ScopedAnimate } from './engine.ts';
 
-/** Motion's `animate()` signatures: elements, selectors, motion values, numbers, objects and sequences. */
-export type AnimateFunction = ReturnType<typeof createScopedAnimate>;
-
-export type ScopedAnimate = AnimateFunction & {
-  /** Stops every animation this function started that is still running. */
-  stop(): void;
-  /** The number of animations still running. */
-  readonly running: number;
-};
-
-const isSequence = (value: unknown): value is unknown[] =>
-  Array.isArray(value) && value.some(Array.isArray);
-
-/** @internal */
+/** @internal Hybrid engine allocation. The mini entry imports engine.ts directly. */
 export function createAnimate(
   settings: ResolvedMotion,
   root?: ElementTarget,
   engine: (...args: never[]) => AnimationPlaybackControlsWithThen = motionAnimate as never,
 ): ScopedAnimate {
-  const running = new Set<AnimationPlaybackControlsWithThen>();
-  let disposed = false;
-  const resolve = (subject: unknown) => {
-    const scope = root === undefined ? undefined : toValue(root);
-    return typeof subject === 'string' && scope ? Array.from(scope.querySelectorAll(subject)) : subject;
-  };
-  const run = (...args: unknown[]): AnimationPlaybackControlsWithThen => {
-    if (disposed) return new GroupAnimationWithThen([]);
-    if (isSequence(args[0])) {
-      args[0] = args[0].map((segment) =>
-        Array.isArray(segment) ? [resolve(segment[0]), ...segment.slice(1)] : segment,
-      );
-      args[1] = applySettings(settings, args[1] as object);
-    } else {
-      args[0] = resolve(args[0]);
-      args[2] = applySettings(settings, args[2] as object);
-    }
-    // Motion never resolves `finished` for an animation that was stopped or interrupted by a newer
-    // one on the same values, so settled entries are pruned here instead.
-    for (const previous of running) if (previous.state === 'idle' || previous.state === 'finished') running.delete(previous);
-    const animation = engine(...(args as never[]));
-    running.add(animation);
-    animation.finished.then(
-      () => running.delete(animation),
-      () => running.delete(animation),
-    );
-    return animation;
-  };
-  const stop = () => {
-    for (const animation of running) animation.stop();
-    running.clear();
-  };
-  onDispose(() => {
-    disposed = true;
-    stop();
-  });
-  return Object.assign(run as unknown as AnimateFunction, {
-    stop,
-    get running() {
-      return running.size;
-    },
-  });
+  return createEngine(settings, root, engine);
 }
 
 /**

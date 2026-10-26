@@ -1,22 +1,24 @@
 import { nextTick, toValue } from '@usevibejs/ui';
-import { animateView, type AnimationOptions, type DOMKeyframesDefinition } from 'motion';
+import {
+  animateView,
+  scopeMotion,
+  type AnimationOptions,
+  type DOMKeyframesDefinition,
+} from 'motion';
 import { createAnimate } from './animate.ts';
 import { applySettings, useMotionSettings } from './config.ts';
 import { onDispose, type ElementTarget } from './internal.ts';
 import { fromTo } from './target.ts';
 
-/** The part of a Vibe.js router that route transitions use; `useRouter()` satisfies it. */
 export interface RouterHooks {
-  beforeResolve(guard: (to: { fullPath: string }, from: { fullPath: string }) => unknown): () => void;
-  afterEach(hook: (to: { fullPath: string }, from: { fullPath: string }, failure?: unknown) => void): () => void;
+  beforeResolve(
+    guard: (to: { fullPath: string }, from: { fullPath: string }) => unknown,
+  ): () => void;
+  afterEach(
+    hook: (to: { fullPath: string }, from: { fullPath: string }, failure?: unknown) => void,
+  ): () => void;
 }
-
 export interface RouteTransitionOptions {
-  /**
-   * `'animate'` (default) plays `exit` on the container, navigates, then plays `initial` → `animate`
-   * on the new page. `'view'` wraps the navigation in a View Transition (cross-fade by default),
-   * falling back to `'animate'` where the API is missing.
-   */
   mode?: 'animate' | 'view';
   initial?: DOMKeyframesDefinition;
   animate?: DOMKeyframesDefinition;
@@ -24,18 +26,7 @@ export interface RouteTransitionOptions {
   transition?: AnimationOptions;
 }
 
-/**
- * Animates navigations of a Vibe.js router: wrap `<RouterView />` in an element and pass its
- * template ref. Exits run in a `beforeResolve` guard, so the old page stays rendered until its
- * exit finishes; a navigation superseded during the exit simply continues with the newest one.
- * With reduced motion, pages swap without animation. Guards are removed with the scope.
- *
- * ```ts
- * const view = useTemplateRef<HTMLElement>('view')
- * useRouteTransition(useRouter(), view, { exit: { opacity: 0 }, initial: { opacity: 0 }, animate: { opacity: 1 } })
- * // <main ref="view"><RouterView /></main>
- * ```
- */
+/** Retain the old route through a public beforeResolve guard, then animate the flushed new page. */
 export function useRouteTransition(
   router: RouterHooks,
   container: ElementTarget<HTMLElement>,
@@ -43,50 +34,100 @@ export function useRouteTransition(
 ): { stop(): void } {
   const settings = useMotionSettings();
   const animate = createAnimate(settings);
+  const owner = scopeMotion();
   const { mode = 'animate', initial = {}, animate: target = {}, exit = {}, transition } = options;
-  const useView = () =>
-    mode === 'view' && typeof document !== 'undefined' && 'startViewTransition' in document;
-  let finishView: (() => void) | undefined;
-
+  let disposed = false;
+  let generation = 0;
+  let pending: { path: string; release(): void; rendered?(): void; restore?(): void } | undefined;
+  const clear = () => {
+    pending?.release();
+    pending?.rendered?.();
+    pending?.restore?.();
+    pending = undefined;
+  };
   const removeGuard = router.beforeResolve((to, from) => {
+    clear(); // A superseded animation's finished promise is not guaranteed to settle.
+    const id = ++generation;
     const element = toValue(container);
-    if (!element || to.fullPath === from.fullPath || settings.reduced.value) return;
-    if (useView()) {
-      // Resolve the guard from inside the transition's update, after the old snapshot is taken;
-      // the update completes once the new route has rendered.
+    if (
+      disposed ||
+      !element ||
+      to.fullPath === from.fullPath ||
+      settings.reduced.value ||
+      settings.config.value.skipAnimations
+    )
+      return;
+    let release!: () => void;
+    const interrupted = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const request = { path: to.fullPath, release } as NonNullable<typeof pending>;
+    pending = request;
+    if (mode === 'view' && typeof document.startViewTransition === 'function') {
       return new Promise<void>((proceed) => {
-        void animateView(
-          () =>
-            new Promise<void>((rendered) => {
-              finishView = rendered;
-              proceed();
-            }),
-          applySettings(settings, transition),
-        );
+        request.release = proceed;
+        void owner
+          .run(() =>
+            animateView(
+              async () => {
+                if (disposed || id !== generation) return;
+                const rendered = new Promise<void>((resolve) => {
+                  request.rendered = resolve;
+                });
+                proceed();
+                await rendered;
+                await nextTick();
+              },
+              applySettings(settings, transition),
+            ).new({ opacity: [0, 1] }),
+          )
+          .then(
+            () => {},
+            () => proceed(),
+          );
       });
     }
     if (!Object.keys(exit).length) return;
+    const inert = element.getAttribute('inert');
     element.setAttribute('inert', '');
-    return animate(element, exit, transition).finished.then(() => element.removeAttribute('inert'));
+    request.restore = () => {
+      if (inert === null) element.removeAttribute('inert');
+      else element.setAttribute('inert', inert);
+    };
+    return Promise.race([animate(element, exit, transition).finished, interrupted]).then(() =>
+      request.restore?.(),
+    );
   });
-
   const removeHook = router.afterEach((to, from, failure) => {
-    const finish = finishView;
-    finishView = undefined;
-    const element = toValue(container);
+    if (disposed || (pending && pending.path !== to.fullPath)) return;
+    const view = !!pending?.rendered;
+    clear();
+    const id = generation;
     void nextTick(() => {
-      finish?.();
-      if (finish || !element || settings.reduced.value || to.fullPath === from.fullPath) return;
-      // A failed navigation keeps the old page: bring it back.
+      const element = toValue(container);
+      if (
+        disposed ||
+        id !== generation ||
+        view ||
+        !element ||
+        settings.reduced.value ||
+        to.fullPath === from.fullPath
+      )
+        return;
       const keyframes = failure ? target : fromTo(initial, target as Record<string, unknown>);
-      if (Object.keys(keyframes).length) animate(element, keyframes as DOMKeyframesDefinition, transition);
+      if (Object.keys(keyframes).length)
+        animate(element, keyframes as DOMKeyframesDefinition, transition);
     });
   });
-
   const stop = () => {
+    if (disposed) return;
+    disposed = true;
+    generation++;
     removeGuard();
     removeHook();
-    finishView?.();
+    clear();
+    animate.stop();
+    owner.stop();
   };
   onDispose(stop);
   return { stop };

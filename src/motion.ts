@@ -2,7 +2,7 @@ import { shallowRef, toValue, watch, type MaybeRefOrGetter, type Ref } from '@us
 import { hover, inView, press, type AnimationOptions } from 'motion';
 import type { InViewOptions } from './scroll.ts';
 import { createAnimate } from './animate.ts';
-import { useMotionSettings } from './config.ts';
+import { applySettings, useMotionSettings } from './config.ts';
 import { useMotionControls, type MotionControls } from './controls.ts';
 import { bindElement, onDispose, sameTarget, type ElementTarget } from './internal.ts';
 import {
@@ -10,7 +10,6 @@ import {
   fromTo,
   resolveTarget,
   splitTarget,
-  type MotionTarget,
   type TargetOrVariant,
   type Variants,
 } from './target.ts';
@@ -22,7 +21,7 @@ export interface ViewportOptions extends InViewOptions {
 
 export interface UseMotionOptions<V extends string = string> {
   /** Named targets that the other options can refer to by name. */
-  variants?: Variants<V>;
+  variants?: MaybeRefOrGetter<Variants<V>>;
   /**
    * The state the element starts in when it appears; `false` jumps straight to `animate`
    * without animating. Omitted, the element animates from its current styles.
@@ -39,6 +38,8 @@ export interface UseMotionOptions<V extends string = string> {
   /** Applied while the element intersects the viewport, or `viewport.root`. */
   inView?: TargetOrVariant<NoInfer<V>>;
   viewport?: ViewportOptions;
+  /** Continuation preserves Motion's velocity; replace stops first; cancel reverts first. */
+  interrupt?: 'continue' | 'replace' | 'cancel';
   /** Called when an animation to a new target starts. */
   onAnimationStart?: (target: Record<string, unknown>) => void;
   /** Called when an animation completes without being interrupted by a newer one. */
@@ -92,13 +93,14 @@ export function useMotion<const V extends string = string>(
   const isPressed = shallowRef(false);
   const isInView = shallowRef(false);
   const isAnimating = shallowRef(false);
-  const { variants } = options;
   const resolve = (definition: TargetOrVariant<V> | undefined | false) =>
-    resolveTarget(definition, variants);
+    resolveTarget(definition, toValue(options.variants));
   const initial = resolve(options.initial);
   let element: HTMLElement | SVGElement | undefined;
   let last: Record<string, unknown> | undefined;
   let generation = 0;
+  let disposed = false;
+  let lastTransition: AnimationOptions | undefined;
 
   const compose = () =>
     composeLayers(
@@ -111,10 +113,15 @@ export function useMotion<const V extends string = string>(
       { ...initial, ...resolve(toValue(options.animate)) },
     );
 
-  const run = (keyframes: Record<string, unknown>, transition?: AnimationOptions): Promise<void> => {
-    if (!element) return Promise.resolve();
+  const run = (
+    keyframes: Record<string, unknown>,
+    transition?: AnimationOptions,
+  ): Promise<void> => {
+    if (!element || disposed) return Promise.resolve();
     const id = ++generation;
     const merged = { ...toValue(options.transition), ...transition };
+    if (options.interrupt === 'replace') controls.stop();
+    if (options.interrupt === 'cancel') controls.cancel();
     options.onAnimationStart?.(keyframes);
     isAnimating.value = true;
     const animation = controls.set(animate(element, keyframes as never, merged));
@@ -127,8 +134,14 @@ export function useMotion<const V extends string = string>(
 
   const update = (enter = false) => {
     const [keyframes, transition] = compose();
-    if (!enter && sameTarget(keyframes, last)) return;
+    const resolvedTransition = applySettings(settings, {
+      ...toValue(options.transition),
+      ...transition,
+    });
+    if (!enter && sameTarget(keyframes, last) && sameTarget(resolvedTransition, lastTransition))
+      return;
     last = keyframes;
+    lastTransition = resolvedTransition;
     if (enter && options.initial === false) {
       void run(keyframes, { duration: 0, delay: 0, type: false } as AnimationOptions);
     } else {
@@ -168,6 +181,9 @@ export function useMotion<const V extends string = string>(
       );
     }
     return () => {
+      generation++;
+      animate.stop();
+      isAnimating.value = false;
       for (const cleanup of cleanups) cleanup();
       isHovered.value = isPressed.value = isInView.value = false;
       element = undefined;
@@ -176,11 +192,19 @@ export function useMotion<const V extends string = string>(
   });
 
   const stopWatch = watch(
-    () => [compose(), toValue(options.transition)] as const,
+    () =>
+      [
+        compose(),
+        { ...toValue(options.transition) },
+        settings.reduced.value,
+        settings.config.value.skipAnimations,
+      ] as const,
     () => update(),
   );
 
   const dispose = () => {
+    if (disposed) return;
+    disposed = true;
     stopWatch();
     stopElement();
     generation++;

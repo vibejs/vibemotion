@@ -1,132 +1,191 @@
-import { nextTick, shallowRef, toValue, type MaybeRefOrGetter, type Ref } from '@usevibejs/ui';
-import { animateLayout, animateView, type AnimationOptions } from 'motion';
+import {
+  isRef,
+  nextTick,
+  shallowRef,
+  toValue,
+  type MaybeRefOrGetter,
+  type Ref,
+} from '@usevibejs/ui';
+import {
+  animateLayout,
+  animateView,
+  scopeMotion,
+  type AnimationOptions,
+  type AnimationPlaybackControls,
+} from 'motion';
 import { applySettings, useMotionSettings } from './config.ts';
 import { onDispose, type ElementTarget } from './internal.ts';
 
 type Update = () => void | Promise<void>;
-type Animation = { stop(): void; finished?: Promise<unknown> } | undefined;
 
 export interface LayoutMotionOptions {
-  /** The transition of the layout animation. Reactive; read at each `update()`. */
   transition?: MaybeRefOrGetter<AnimationOptions | undefined>;
-  /** Transitions for elements with a given `data-layout-id`, keyed by that id. */
+  /** Transitions for explicit data-layout-id values. IDs must be unique across the document. */
   shared?: Record<string, AnimationOptions>;
 }
-
 export interface LayoutMotion {
-  /**
-   * Applies `mutate` and animates every `[data-layout]` / `[data-layout-id]` element in the scope
-   * from its old box to its new one. `mutate` changes reactive state; VibeMotion waits for Vibe.js to
-   * flush the DOM before measuring. Calling it during an animation interrupts it from the current
-   * visual position. Resolves when the DOM has updated and the animation has started.
-   */
+  /** Snapshot, mutate reactive state, await nextTick, then project to the new layout. */
   update(mutate: Update): Promise<void>;
   readonly isAnimating: Readonly<Ref<boolean>>;
-  /** Stops running layout animations at their current position. */
   stop(): void;
 }
 
-/**
- * FLIP layout animations with Motion's `animateLayout()`, synchronised with Vibe.js updates.
- * Mark animated elements with `data-layout` (position and size) or `data-layout-id="id"` (shared
- * identity: an element removed and another added with the same id morph into each other).
- * Animations use transforms, so they never trigger layout during playback. With reduced motion,
- * `update()` applies the change without animating.
- */
-export function useLayoutMotion(scope?: ElementTarget, options: LayoutMotionOptions = {}): LayoutMotion {
+/** Motion's layout engine, scoped to a container and synchronized with Vibe.js DOM updates. */
+export function useLayoutMotion(
+  scope?: ElementTarget,
+  options: LayoutMotionOptions = {},
+): LayoutMotion {
   const settings = useMotionSettings();
+  const owner = scopeMotion();
   const isAnimating = shallowRef(false);
-  const running = new Set<Animation>();
+  const running = new Set<AnimationPlaybackControls>();
   let generation = 0;
+  let stoppedThrough = 0;
   let disposed = false;
-
+  const measuredRoots = new Set<Element>();
   const stop = () => {
-    generation++;
-    for (const animation of running) animation?.stop();
+    stoppedThrough = ++generation;
+    for (const animation of running) animation.stop();
     running.clear();
     isAnimating.value = false;
   };
   onDispose(() => {
     disposed = true;
     stop();
+    owner.stop();
+    // A layout transaction reconciles detached projection nodes through the public engine.
+    // Vibe disposes a block's scope before removing its DOM; wait for that removal first.
+    const roots = [...measuredRoots];
+    measuredRoots.clear();
+    void nextTick(() => {
+      // Pull the cleared template ref after Vibe has disposed its render scope.
+      if (isRef(scope)) void scope.value;
+      for (const root of roots)
+        if (!root.isConnected) {
+          animateLayout(root, () => {}, { skipAnimations: true }).then((animation) =>
+            animation.stop(),
+          );
+        }
+    });
   });
-
   return {
     isAnimating,
     stop,
     async update(mutate) {
+      if (disposed) return;
       const commit = async () => {
+        if (disposed) return;
         await mutate();
         await nextTick();
       };
-      if (disposed || settings.reduced.value || settings.config.value.skipAnimations) {
+      const root = scope === undefined ? undefined : toValue(scope);
+      if (
+        (scope !== undefined && !root) ||
+        settings.reduced.value ||
+        settings.config.value.skipAnimations
+      ) {
         await commit();
         return;
       }
-      const root = scope === undefined ? undefined : (toValue(scope) ?? undefined);
+      // Keep only the current measurement containers, not every historical animated element.
+      for (const previous of measuredRoots)
+        if (!previous.isConnected) measuredRoots.delete(previous);
+      if (root) measuredRoots.add(root);
+      else if (typeof document !== 'undefined') {
+        for (const element of document.querySelectorAll('[data-layout],[data-layout-id]'))
+          measuredRoots.add(element);
+      }
       const transition = applySettings(settings, toValue(options.transition) ?? {});
-      const builder = root ? animateLayout(root, commit, transition) : animateLayout(commit, transition);
-      for (const [id, shared] of Object.entries(options.shared ?? {})) builder.shared(id, shared);
       const id = ++generation;
       isAnimating.value = true;
-      const animation: Animation = await new Promise<Animation>((resolve, reject) =>
-        builder.then(resolve as never, reject),
-      );
-      if (disposed) {
-        animation?.stop();
-        return;
-      }
-      running.add(animation);
-      const done = () => {
-        running.delete(animation);
+      try {
+        const builder = owner.run(() =>
+          root ? animateLayout(root, commit, transition) : animateLayout(commit, transition),
+        );
+        for (const [sharedId, shared] of Object.entries(options.shared ?? {}))
+          builder.shared(sharedId, shared);
+        // Do not Promise-resolve a playback control with a .then method (thenable assimilation).
+        const { animation } = await new Promise<{ animation: AnimationPlaybackControls }>(
+          (resolve, reject) =>
+            builder.then((readyAnimation) => resolve({ animation: readyAnimation }), reject),
+        );
+        if (disposed || id <= stoppedThrough) {
+          animation.stop();
+          return;
+        }
+        running.add(animation);
+        const done = () => {
+          running.delete(animation);
+          if (id === generation) isAnimating.value = false;
+        };
+        animation.finished.then(done, done);
+      } catch (error) {
         if (id === generation) isAnimating.value = false;
-      };
-      if (animation?.finished) animation.finished.then(done, done);
-      else done();
+        throw error;
+      }
     },
   };
 }
 
 export interface ViewTransitionHandle {
-  /**
-   * Runs `mutate` inside a View Transition, waiting for Vibe.js to flush the DOM before the new
-   * snapshot. `configure` receives Motion's `animateView()` builder to add shared elements
-   * (`.add(element)`), and enter, exit or layout keyframes. Without View Transition support or
-   * with reduced motion, the change applies immediately and nothing animates.
-   */
+  /** Complete a view transition, or just commit on unsupported browsers or with reduced motion. */
   start(
     mutate: Update,
     configure?: (builder: ReturnType<typeof animateView>) => void,
     options?: AnimationOptions & { interrupt?: 'wait' | 'immediate' },
   ): Promise<void>;
   readonly isTransitioning: Readonly<Ref<boolean>>;
+  /** Stops the current transition. Future calls remain available until scope disposal. */
+  stop(): void;
 }
 
-/** View Transition API integration through Motion's `animateView()`. */
+/** Snapshot transitions through Motion's public builder; crossfade is the default. */
 export function useViewTransition(): ViewTransitionHandle {
   const settings = useMotionSettings();
   const isTransitioning = shallowRef(false);
+  let owner = scopeMotion();
+  let generation = 0;
   let disposed = false;
-  onDispose(() => (disposed = true));
+  const stop = () => {
+    generation++;
+    owner.stop();
+    isTransitioning.value = false;
+  };
+  onDispose(() => {
+    disposed = true;
+    stop();
+  });
   return {
     isTransitioning,
+    stop,
     async start(mutate, configure, options) {
+      if (disposed) return;
       const commit = async () => {
-        await mutate();
-        await nextTick();
+        if (!disposed) {
+          await mutate();
+          await nextTick();
+        }
       };
-      const supported = typeof document !== 'undefined' && 'startViewTransition' in document;
-      if (disposed || !supported || settings.reduced.value || settings.config.value.skipAnimations) {
+      if (
+        typeof document === 'undefined' ||
+        typeof document.startViewTransition !== 'function' ||
+        settings.reduced.value ||
+        settings.config.value.skipAnimations
+      ) {
         await commit();
         return;
       }
+      if (owner.state !== 'active') owner = scopeMotion();
+      const id = ++generation;
       isTransitioning.value = true;
       try {
-        const builder = animateView(commit, applySettings(settings, options));
+        const builder = owner.run(() =>
+          animateView(commit, applySettings(settings, options)).new({ opacity: [0, 1] }),
+        );
         configure?.(builder);
         await builder;
       } finally {
-        isTransitioning.value = false;
+        if (id === generation) isTransitioning.value = false;
       }
     },
   };
