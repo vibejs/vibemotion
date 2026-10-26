@@ -7,7 +7,7 @@ export type MotionPlayState = 'idle' | 'running' | 'paused' | 'finished';
 /**
  * Reactive playback controls around the latest Motion animation handed to `set()`. The play
  * state and speed are reactive; `time` is read and written on demand so that a running animation
- * never schedules a Vibe.js update per frame.
+ * never schedules a vibe.js update per frame.
  */
 export interface MotionControls {
   /** The animation being controlled, `null` before the first one. */

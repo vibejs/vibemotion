@@ -21,5 +21,5 @@ export function mockReducedMotion(initial = false) {
   };
 }
 
-/** Waits for Motion's frame loop and Vibe.js flushes. */
+/** Waits for Motion's frame loop and vibe.js flushes. */
 export const frames = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

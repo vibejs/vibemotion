@@ -2,7 +2,7 @@
 
 Verified 2026-10-26 against the local ecosystem source and installed npm artifacts.
 
-## Vibe.js 0.1.0
+## vibe.js 0.1.0
 
 Read `AGENTS.md`, `CONTRACTS.md`, decisions 0001 and 0004, UI `index.ts`,
 `component.ts`, reactivity `ref.ts`, `computed.ts`, `effectScope.ts`, runtime
@@ -101,11 +101,11 @@ MotionValues because the underlying effect API expects `.get()`-capable values.
 
 Layout teardown performs an animation-disabled public reconciliation after the DOM
 is detached; no private projection unmount helpers are imported. The packed
-consumer releases its app reference after unmount (Vibe.js's App object deliberately
+consumer releases its app reference after unmount (vibe.js's App object deliberately
 retains its instance). Its projected DOM is then checked with WeakRefs and browser
 GC. Application-owned handles must also be released before testing collectibility.
 
-Vibe.js 0.1.0's lazy template-ref cleanup can temporarily retain the most recently
+vibe.js 0.1.0's lazy template-ref cleanup can temporarily retain the most recently
 disposed route branch through its reactive dependency queue until another render.
 The route heap regression completes a second render and verifies zero retained
 nodes from the older branch; it is an accumulation test. Separately, the isolated

@@ -1,7 +1,7 @@
 {
   "name": "@usevibejs/motion",
   "version": "0.1.0",
-  "description": "Beautiful Motion for Vibe.js: animations, springs, gestures, scroll, layout and presence, powered by Motion.",
+  "description": "Animations, springs, gestures, scroll, layout and presence for vibe.js, powered by Motion.",
   "keywords": [
     "animation",
     "gestures",

@@ -30,7 +30,7 @@ export interface LayoutMotion {
   stop(): void;
 }
 
-/** Motion's layout engine, scoped to a container and synchronized with Vibe.js DOM updates. */
+/** Motion's layout engine, scoped to a container and synchronized with vibe.js DOM updates. */
 export function useLayoutMotion(
   scope?: ElementTarget,
   options: LayoutMotionOptions = {},

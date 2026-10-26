@@ -116,7 +116,7 @@ export interface Presence {
 }
 
 /**
- * Keeps conditional content rendered until its exit animation has finished. Vibe.js removes a
+ * Keeps conditional content rendered until its exit animation has finished. vibe.js removes a
  * `v-if` branch immediately, so render with `v-if="presence.isPresent"` instead of `v-if="show"`:
  * when `show` turns `false`, the element plays `exit` and only then is `isPresent` cleared.
  * Turning `show` back on during the exit reverses it from the current values; a stale exit
@@ -246,7 +246,7 @@ export interface PresenceList<T> {
    * `v-for="entry in list.items.value" :key="entry.key" :ref="(el) => list.bind(entry.key, el)"`.
    */
   readonly items: Readonly<ShallowRef<readonly PresenceEntry<T>[]>>;
-  /** Connects an entry to its element, from a function ref. Vibe.js calls it with `null` on removal. */
+  /** Connects an entry to its element, from a function ref. vibe.js calls it with `null` on removal. */
   bind(key: PropertyKey, element: unknown): void;
 }
 

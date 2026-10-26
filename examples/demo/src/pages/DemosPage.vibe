@@ -35,9 +35,9 @@ const toc = [
   <div class="space-y-10">
     <section class="space-y-4 py-6">
       <p class="font-mono text-xs tracking-widest text-muted-foreground uppercase">@usevibejs/motion</p>
-      <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">Beautiful Motion for Vibe.js</h1>
+      <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">Beautiful Motion for vibe.js</h1>
       <p class="max-w-2xl text-lg text-muted-foreground">
-        Springs, gestures, scroll, layout and presence as composables. Vibe.js reactivity drives state; Motion's engine drives every frame.
+        Springs, gestures, scroll, layout and presence as composables. vibe.js reactivity drives state; Motion's engine drives every frame.
       </p>
       <pre class="max-w-2xl overflow-x-auto rounded-lg border bg-muted/40 p-4 text-sm"><code>const card = useTemplateRef&lt;HTMLElement&gt;('card')
 useMotion(card, {

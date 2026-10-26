@@ -55,7 +55,7 @@ await writeFile(
   JSON.stringify(
     {
       external: ['@usevibejs/ui'],
-      note: 'Minified consumer bundles including Motion, excluding Vibe.js. Bytes, not package download size.',
+      note: 'Minified consumer bundles including Motion, excluding vibe.js. Bytes, not package download size.',
       rows,
     },
     null,
