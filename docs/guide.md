@@ -25,7 +25,7 @@ new composables after `await` without an explicit scope.
 
 ## Core concepts and reactive animations
 
-Vibe.js owns application state and DOM structure. Motion owns animated properties.
+vibe.js owns application state and DOM structure. Motion owns animated properties.
 Give an animated element a typed `useTemplateRef<HTMLElement>('card')`. The adapter
 waits for null refs and rebinds on replacement. Replacing a target stops animation
 and removes gestures on the previous element. Creating an effect scope gives the
@@ -60,7 +60,7 @@ filters), explicitly include the resting value in `animate`; the adapter does no
 invent a CSS reset value.
 
 Identical targets and transitions do not restart. Rapid updates are batched by
-Vibe.js. The default interruption policy `continue` lets Motion transfer current
+vibe.js. The default interruption policy `continue` lets Motion transfer current
 values and spring velocity to the new target. `replace` explicitly stops the
 previous animation first. `cancel` reverts it before starting the replacement.
 `motion.start(target, transition?)` temporarily overrides declared state; the next
@@ -171,7 +171,7 @@ be brought back by a delayed callback.
 For nested exits, retain the outer boundary for at least the duration of required
 child exits, or sequence explicit application state. Independent child `v-if`
 branches are not automatically registered with their parent. A general automatic
-retention boundary requires a new Vibe.js public framework API; see the decision
+retention boundary requires a new vibe.js public framework API; see the decision
 record. No private removal interception is used.
 
 For a list or wait-style content swap:
@@ -381,7 +381,7 @@ reads velocity without a framework subscription.
 
 ### Layout disposal and manually owned DOM
 
-Vibe.js disposes block scopes before removing their DOM. On disposal the adapter
+vibe.js disposes block scopes before removing their DOM. On disposal the adapter
 stops controls, then performs a public, animation-disabled layout reconciliation
 on detached measured roots after `nextTick`. This releases Motion's document
 projection entries without private unmount calls. Browser tests use WeakRefs and

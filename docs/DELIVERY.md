@@ -2,7 +2,7 @@
 
 ## Engine and architecture
 
-Motion **14.6.0**, pinned as an external runtime dependency, with Vibe.js **0.1.x**
+Motion **14.6.0**, pinned as an external runtime dependency, with vibe.js **0.1.x**
 as a peer. Four layers: official vanilla engine, public Vibe lifecycle/reactivity
 adapter, declarative composables/explicit retention, optional Vibecn compositions.
 ESM + tsdown + declarations/maps, strict TypeScript, pnpm, MIT and upstream notices.
@@ -50,7 +50,7 @@ collectible after unmount and release of the caller's App handle.
 ## Bundle measurement
 
 Independent fully minified consumer bundles, bytes including Motion and excluding
-Vibe.js. These are consumer entry costs, not the adapter tarball size.
+vibe.js. These are consumer entry costs, not the adapter tarball size.
 
 | Import | Raw | gzip | Brotli |
 | --- | ---: | ---: | ---: |
@@ -85,14 +85,14 @@ Raw evidence: [verification](../reports/verification.json),
 
 ## Known limits
 
-- No automatic Motion/MotionPresence/Group components: Vibe.js has no public child
+- No automatic Motion/MotionPresence/Group components: vibe.js has no public child
   retention/removal barrier or generic native-tag renderer. Use explicit composables.
 - Nested exits require explicit outer retention; ancestor scope disposal takes precedence.
 - Shared layout IDs must be document-unique. CSS transforms should be nested away
   from projected elements. Manually owned layout DOM should be removed with its scope.
 - Motion 14.6 retains native element scroll timelines; replaceable targets use its
   shared callback tracker. Page scrolling can use native timelines.
-- Vibe.js can transiently retain its last disposed route branch until another render;
+- vibe.js can transiently retain its last disposed route branch until another render;
   accumulation checks distinguish this from adapter-owned leaked nodes.
 - Motion 14.6's view builder declaration omits the actual ready-controls argument;
   the adapter validates the public playback shape and separately awaits completion.

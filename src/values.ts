@@ -24,7 +24,7 @@ function own<T>(value: MotionValue<T>): MotionValue<T> {
   return value;
 }
 
-/** A Motion value, destroyed when the calling scope stops. Changing it never re-renders Vibe.js. */
+/** A Motion value, destroyed when the calling scope stops. Changing it never re-renders vibe.js. */
 export function useMotionValue<T>(initial: T): MotionValue<T> {
   requireScope();
   return own(motionValue(initial));
@@ -107,7 +107,7 @@ export function useTransform<O>(
 
 /**
  * Opts in to reactive observation of a motion value: a readonly ref updated on each change (each explicit set may emit). Use it for text or logic; bind motion values to styles with
- * `useMotionStyle()` instead, which skips Vibe.js rendering entirely.
+ * `useMotionStyle()` instead, which skips vibe.js rendering entirely.
  */
 export function useMotionValueState<T>(value: MotionValue<T>): Readonly<Ref<T>> {
   requireScope();
@@ -172,7 +172,7 @@ function useEffect(
 /**
  * Binds motion values (or static values) to the element's styles through Motion's frame loop,
  * batching writes once per frame. Transforms such as `x`, `scale` and `rotate` compose into one
- * `transform`. Vibe.js owns the other style bindings; do not bind the same property in both.
+ * `transform`. vibe.js owns the other style bindings; do not bind the same property in both.
  */
 export function useMotionStyle(
   target: ElementTarget<HTMLElement | SVGElement>,

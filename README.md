@@ -1,8 +1,8 @@
 # VibeMotion
 
-**Beautiful Motion for Vibe.js**
+**Animations, springs, gestures, scroll, layout and presence for vibe.js, powered by Motion.**
 
-`@usevibejs/motion` provides native [Vibe.js](https://vibejs.org) composables for Motion's
+`@usevibejs/motion` provides native [vibe.js](https://vibejs.org) composables for Motion's
 JavaScript engine. Reactive targets, springs, values, gestures, scroll, retained exits and shared
 layout transitions. ESM, strict TypeScript, MIT. No React or Vue runtime.
 
@@ -12,7 +12,7 @@ layout transitions. ESM, strict TypeScript, MIT. No React or Vue runtime.
 pnpm add @usevibejs/motion @usevibejs/ui
 ```
 
-Requires Vibe.js **0.1.x** and its matching compiler. Motion **14.6.0** is an
+Requires vibe.js **0.1.x** and its matching compiler. Motion **14.6.0** is an
 external runtime dependency, installed automatically. Tooling requires Node
 `^24.15.0 || >=26`. See [compatibility research](docs/RESEARCH.md).
 
@@ -53,7 +53,7 @@ const presence = usePresence(show, panel, {
 // <div v-if="presence.isPresent.value" ref="panel">...</div>
 ```
 
-Create the controller outside the branch it retains. Vibe.js removes ordinary
+Create the controller outside the branch it retains. vibe.js removes ordinary
 `v-if="show"` content immediately. This library does not intercept removal or
 promise automatic AnimatePresence parity. See [presence](docs/guide.md#presence).
 

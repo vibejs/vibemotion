@@ -14,7 +14,7 @@ useRouteTransition(useRouter(), view, {
   transition: { duration: 0.18, ease: 'easeOut' },
 });
 
-// Page scroll progress bar: a motion value bound to a transform, no Vibe.js render per frame.
+// Page scroll progress bar: a motion value bound to a transform, no vibe.js render per frame.
 const bar = useTemplateRef<HTMLElement>('bar');
 const { scrollYProgress } = useScroll();
 useMotionStyle(bar, { scaleX: scrollYProgress });
@@ -52,7 +52,7 @@ const forceReduced = computed({
       <RouterView />
     </main>
     <footer class="border-t py-6 text-center text-xs text-muted-foreground">
-      VibeMotion — Beautiful Motion for Vibe.js. Powered by Motion. MIT licensed.
+      VibeMotion — Beautiful Motion for vibe.js. Powered by Motion. MIT licensed.
     </footer>
   </div>
 </template>

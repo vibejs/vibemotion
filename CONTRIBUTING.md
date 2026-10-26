@@ -9,7 +9,7 @@ packed consumer and bundle assertions. `pnpm bench` runs one warm-up and three
 samples per scenario and writes the actual hardware/browser context. Do not compare
 results from different machines as though they were equivalent.
 
-Keep runtime dependencies external. Use only public Vibe.js APIs; generated
+Keep runtime dependencies external. Use only public vibe.js APIs; generated
 compiler output may import its own ABI, but adapter source must never do so.
 Resource-owning APIs must have a deterministic scope owner and test replacement,
 disposal and late completion. Browser tests must exercise the real Motion engine;

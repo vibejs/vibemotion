@@ -1,6 +1,6 @@
 # VibeMotion
 
-Use public Vibe.js APIs and Motion's vanilla JavaScript entry points. Keep framework
+Use public vibe.js APIs and Motion's vanilla JavaScript entry points. Keep framework
 and engine dependencies external. Resource allocation requires an active effect
 scope. Preserve upstream source notices in the demo.
 

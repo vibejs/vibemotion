@@ -1,13 +1,13 @@
 # Performance and verification
 
 Motion owns the frame loop, interpolation and browser animation selection. The
-adapter uses Vibe.js watchers for target/configuration changes and low-frequency
+adapter uses vibe.js watchers for target/configuration changes and low-frequency
 control state. Motion values do not become Vibe refs unless observation is requested.
 Use opacity/transforms and native page scroll timelines where available; width/height,
 filters and many simultaneous layers can still cost layout or paint.
 
 `pnpm size` builds independent production consumer entry points and measures raw,
-gzip and Brotli bytes, including Motion but excluding the Vibe.js peer runtime.
+gzip and Brotli bytes, including Motion but excluding the vibe.js peer runtime.
 It checks that mini excludes the hybrid sequence/JS animation engine, a preference
 import excludes Motion, and no React/Vue runtime enters any output. The generated
 [report](../reports/bundle-size.json) describes its units. Published adapter chunks

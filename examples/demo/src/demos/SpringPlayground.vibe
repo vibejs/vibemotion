@@ -10,7 +10,7 @@ const damping = ref([12]);
 const mass = ref([1]);
 const right = ref(false);
 
-// Vibe.js owns the target and the spring options; Motion owns the per-frame value.
+// vibe.js owns the target and the spring options; Motion owns the per-frame value.
 const progress = useSpring(
   () => (right.value ? 1 : 0),
   () => ({ stiffness: stiffness.value[0], damping: damping.value[0], mass: mass.value[0] }),
@@ -19,7 +19,7 @@ const progress = useSpring(
 const ball = useTemplateRef<HTMLElement>('ball');
 const track = useTemplateRef<HTMLElement>('track');
 const x = useTransform(() => progress.get() * ((track.value?.clientWidth ?? 64) - 64));
-// Motion writes the transform in its frame loop: no Vibe.js render per frame.
+// Motion writes the transform in its frame loop: no vibe.js render per frame.
 useMotionStyle(ball, { x });
 
 // A real response trace, written to SVG by Motion rather than rendered through Vibe each frame.

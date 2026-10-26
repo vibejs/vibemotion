@@ -20,7 +20,7 @@ export function requireScope(): void {
     throw motionError('Call composables in component setup or an active effectScope().run().');
 }
 
-/** Registers cleanup with the active public Vibe.js scope. */
+/** Registers cleanup with the active public vibe.js scope. */
 export function onDispose(fn: () => void): void {
   requireScope();
   onScopeDispose(fn);
@@ -28,7 +28,7 @@ export function onDispose(fn: () => void): void {
 
 /**
  * Calls `setup` for the current element of `target` and the cleanup it returns when the element
- * is replaced, removed or the scope stops. Runs after Vibe.js has flushed the DOM, so the element
+ * is replaced, removed or the scope stops. Runs after vibe.js has flushed the DOM, so the element
  * is connected. Returns a function that stops watching and runs the pending cleanup.
  */
 export function bindElement<E extends Element>(
