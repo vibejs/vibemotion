@@ -41,6 +41,9 @@
     },
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite examples/demo --host 127.0.0.1",
     "build": "tsdown",
@@ -55,7 +58,8 @@
     "test:package": "node scripts/package.ts",
     "bench": "pnpm build:demo && node benchmarks/run.ts",
     "size": "node scripts/size.ts",
-    "check": "pnpm fmt:check && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm build && pnpm test:browser && pnpm test:package && pnpm size"
+    "check": "pnpm fmt:check && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm build && pnpm test:browser && pnpm test:package && pnpm size",
+    "version-packages": "changeset version && pnpm install --lockfile-only"
   },
   "dependencies": {
     "motion": "14.6.0"
