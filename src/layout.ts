@@ -146,8 +146,12 @@ export function useViewTransition(): ViewTransitionHandle {
   let owner = scopeMotion();
   let generation = 0;
   let disposed = false;
+  const releases = new Set<() => void>();
+  let stoppedThrough = 0;
   const stop = () => {
-    generation++;
+    stoppedThrough = ++generation;
+    for (const release of releases) release();
+    releases.clear();
     owner.stop();
     isTransitioning.value = false;
   };
@@ -160,8 +164,9 @@ export function useViewTransition(): ViewTransitionHandle {
     stop,
     async start(mutate, configure, options) {
       if (disposed) return;
+      const id = ++generation;
       const commit = async () => {
-        if (!disposed) {
+        if (!disposed && id > stoppedThrough) {
           await mutate();
           await nextTick();
         }
@@ -176,15 +181,35 @@ export function useViewTransition(): ViewTransitionHandle {
         return;
       }
       if (owner.state !== 'active') owner = scopeMotion();
-      const id = ++generation;
       isTransitioning.value = true;
+      let release!: () => void;
+      const cancelled = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      releases.add(release);
       try {
         const builder = owner.run(() =>
           animateView(commit, applySettings(settings, options)).new({ opacity: [0, 1] }),
         );
         configure?.(builder);
-        await builder;
+        // The 14.6 runtime supplies public playback controls here, although its .then()
+        // declaration omits the callback argument. Validate that shape at the boundary.
+        const ready = new Promise<{ animation?: AnimationPlaybackControls }>((resolve, reject) => {
+          builder.then((...args: unknown[]) => {
+            const candidate = args[0];
+            const animation =
+              candidate &&
+              typeof candidate === 'object' &&
+              'finished' in candidate &&
+              'stop' in candidate
+                ? (candidate as AnimationPlaybackControls)
+                : undefined;
+            resolve({ animation });
+          }, reject);
+        });
+        await Promise.race([ready.then(({ animation }) => animation?.finished), cancelled]);
       } finally {
+        releases.delete(release);
         if (id === generation) isTransitioning.value = false;
       }
     },

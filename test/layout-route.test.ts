@@ -8,7 +8,7 @@ const engine = vi.hoisted(() => ({
     animation: AnimationPlaybackControls;
     finish: () => void;
   }[],
-  views: [] as { mutate: () => void | Promise<void>; finish: () => void }[],
+  views: [] as { mutate: () => void | Promise<void>; ready: () => void; finish: () => void }[],
   fail: false,
 }));
 vi.mock('motion', async (original) => {
@@ -49,18 +49,29 @@ vi.mock('motion', async (original) => {
       return builder;
     }) as unknown as typeof animateLayout,
     animateView: ((mutate: () => void | Promise<void>) => {
-      let finish!: () => void;
-      const ready = new Promise<void>((resolve) => {
-        finish = resolve;
+      let ready!: () => void;
+      let done!: () => void;
+      const snapshotReady = new Promise<void>((resolve) => {
+        ready = resolve;
       });
-      engine.views.push({ mutate, finish });
+      const animation = {
+        finished: new Promise<void>((resolve) => {
+          done = resolve;
+        }),
+        stop: vi.fn<() => void>(),
+      } as unknown as AnimationPlaybackControls;
+      const finish = () => {
+        ready();
+        done();
+      };
+      engine.views.push({ mutate, ready, finish });
       const builder = {
         new: () => builder,
-        then: (resolve: () => void, reject?: () => void) =>
+        then: (resolve: (control: AnimationPlaybackControls) => void, reject?: () => void) =>
           Promise.resolve()
             .then(mutate)
-            .then(() => ready)
-            .then(resolve, reject),
+            .then(() => snapshotReady)
+            .then(() => resolve(animation), reject),
       };
       return builder;
     }) as unknown as typeof animateView,
@@ -173,6 +184,26 @@ describe('view transition boundaries', () => {
     expect(mutate).toHaveBeenCalledTimes(2);
     delete (document as unknown as { startViewTransition?: unknown }).startViewTransition;
   });
+  it('waits for playback after snapshot readiness and settles when the scope stops', async () => {
+    mockReducedMotion(false);
+    Object.defineProperty(document, 'startViewTransition', {
+      value: vi.fn<() => void>(),
+      configurable: true,
+    });
+    const scope = effectScope();
+    const h = scope.run(() => useViewTransition())!;
+    const pending = h.start(() => {});
+    engine.views.at(-1)!.ready();
+    await nextTick();
+    await nextTick();
+    expect(h.isTransitioning.value).toBe(true);
+    scope.stop();
+    await pending;
+    expect(h.isTransitioning.value).toBe(false);
+    engine.views.at(-1)!.finish();
+    delete (document as unknown as { startViewTransition?: unknown }).startViewTransition;
+  });
+
   it('configures supported transitions, tracks completion, and restarts after stop', async () => {
     mockReducedMotion(false);
     Object.defineProperty(document, 'startViewTransition', {
