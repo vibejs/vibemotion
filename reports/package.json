@@ -1,0 +1,16 @@
+{
+  "package": "@usevibejs/motion",
+  "version": "0.1.0",
+  "checks": [
+    "isolated install",
+    "declarations and negative types",
+    "real .vibe build",
+    "hybrid and mini browser animations",
+    "hover",
+    "layout",
+    "unmount",
+    "detached layout garbage collection",
+    "no React or Vue installed"
+  ],
+  "passed": true
+}

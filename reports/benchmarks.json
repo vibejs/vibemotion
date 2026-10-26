@@ -1,0 +1,224 @@
+{
+  "date": "2026-10-26T05:31:10.506Z",
+  "browser": "156.0.8078.4",
+  "system": {
+    "platform": "darwin",
+    "release": "25.6.0",
+    "arch": "arm64",
+    "cpu": "Apple M4"
+  },
+  "viewport": "1280x900",
+  "methodology": "Headless Chromium RAF intervals. One warm-up, three samples per workload. Intervals are not an FPS guarantee; setup metrics differ by scenario. Layout samples include each reorder.",
+  "samples": [
+    {
+      "scenario": "animate:100",
+      "elements": 100,
+      "setupMs": 5.1,
+      "frames": 66,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "animate:500",
+      "elements": 500,
+      "setupMs": 11.6,
+      "frames": 66,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "stagger:500",
+      "elements": 500,
+      "setupMs": 14.1,
+      "frames": 89,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "retarget:100",
+      "elements": 100,
+      "setupMs": 1.4,
+      "frames": 90,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "interrupt:100",
+      "elements": 100,
+      "setupMs": 49.7,
+      "frames": 90,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "layout:100",
+      "elements": 100,
+      "setupMs": 667.1,
+      "frames": 71,
+      "meanFrameMs": 16.66,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "gestures:50",
+      "elements": 50,
+      "setupMs": 111.8,
+      "frames": 60,
+      "meanFrameMs": 16.66,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "animate:100",
+      "elements": 100,
+      "setupMs": 3.2,
+      "frames": 66,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "animate:500",
+      "elements": 500,
+      "setupMs": 12.1,
+      "frames": 65,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "stagger:500",
+      "elements": 500,
+      "setupMs": 12.9,
+      "frames": 89,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "retarget:100",
+      "elements": 100,
+      "setupMs": 2.9,
+      "frames": 90,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "interrupt:100",
+      "elements": 100,
+      "setupMs": 47.5,
+      "frames": 90,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "layout:100",
+      "elements": 100,
+      "setupMs": 667.2,
+      "frames": 71,
+      "meanFrameMs": 16.66,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "gestures:50",
+      "elements": 50,
+      "setupMs": 110.5,
+      "frames": 60,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "animate:100",
+      "elements": 100,
+      "setupMs": 3.7,
+      "frames": 66,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "animate:500",
+      "elements": 500,
+      "setupMs": 10.3,
+      "frames": 66,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "stagger:500",
+      "elements": 500,
+      "setupMs": 10.9,
+      "frames": 90,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "retarget:100",
+      "elements": 100,
+      "setupMs": 2,
+      "frames": 90,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.7,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "interrupt:100",
+      "elements": 100,
+      "setupMs": 45.7,
+      "frames": 90,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "layout:100",
+      "elements": 100,
+      "setupMs": 664.3,
+      "frames": 71,
+      "meanFrameMs": 16.66,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    },
+    {
+      "scenario": "gestures:50",
+      "elements": 50,
+      "setupMs": 112.5,
+      "frames": 60,
+      "meanFrameMs": 16.67,
+      "p95FrameMs": 16.8,
+      "maxFrameMs": 16.8,
+      "longFrames": 0
+    }
+  ]
+}

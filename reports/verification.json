@@ -1,0 +1,71 @@
+{
+  "coreRevision": "4a0555d",
+  "commands": {
+    "pnpm check": "passed",
+    "pnpm bench": "passed",
+    "pnpm exec changeset status": "passed"
+  },
+  "unitAndIntegration": {
+    "files": 8,
+    "passed": 63,
+    "failed": 0
+  },
+  "browser": {
+    "engine": "Chromium",
+    "passed": 39,
+    "failed": 0
+  },
+  "coverage": {
+    "lines": {
+      "total": 805,
+      "covered": 797,
+      "skipped": 0,
+      "pct": 99
+    },
+    "statements": {
+      "total": 915,
+      "covered": 899,
+      "skipped": 0,
+      "pct": 98.25
+    },
+    "functions": {
+      "total": 231,
+      "covered": 224,
+      "skipped": 0,
+      "pct": 96.96
+    },
+    "branches": {
+      "total": 469,
+      "covered": 436,
+      "skipped": 0,
+      "pct": 92.96
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": "Unknown"
+    }
+  },
+  "packageConsumer": {
+    "package": "@usevibejs/motion",
+    "version": "0.1.0",
+    "checks": [
+      "isolated install",
+      "declarations and negative types",
+      "real .vibe build",
+      "hybrid and mini browser animations",
+      "hover",
+      "layout",
+      "unmount",
+      "detached layout garbage collection",
+      "no React or Vue installed"
+    ],
+    "passed": true
+  },
+  "notes": [
+    "Browser checks use the real Motion engine.",
+    "Unit mocks exercise lifecycle races; real .vibe integration fixtures and an independent packed consumer also run.",
+    "Benchmarks are machine-specific RAF intervals, not promised FPS."
+  ]
+}

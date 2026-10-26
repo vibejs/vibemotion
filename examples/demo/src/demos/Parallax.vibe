@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTemplateRef } from '@usevibejs/ui';
-import { useMotionStyle, useScroll, useScrollAnimation, useTransform } from '@usevibejs/motion';
+import { useMotionStyle, useReducedMotion, useScroll, useScrollAnimation, useTransform } from '@usevibejs/motion';
 
 const section = useTemplateRef<HTMLElement>('section');
 const back = useTemplateRef<HTMLElement>('back');
@@ -8,8 +8,11 @@ const front = useTemplateRef<HTMLElement>('front');
 
 // Progress of the section through the viewport, from entering at the bottom to leaving at the top.
 const { scrollYProgress } = useScroll({ target: section, offset: ['start end', 'end start'] });
-useMotionStyle(back, { y: useTransform(scrollYProgress, [0, 1], [-40, 40]) });
-useMotionStyle(front, { y: useTransform(scrollYProgress, [0, 1], [60, -60]) });
+const reduced = useReducedMotion();
+const backY = useTransform(scrollYProgress, [0, 1], [-40, 40]);
+const frontY = useTransform(scrollYProgress, [0, 1], [60, -60]);
+useMotionStyle(back, () => ({ y: reduced.value ? 0 : backY }));
+useMotionStyle(front, () => ({ y: reduced.value ? 0 : frontY }));
 
 // A scroll-linked animation (native ScrollTimeline where supported).
 const title = useTemplateRef<HTMLElement>('title');

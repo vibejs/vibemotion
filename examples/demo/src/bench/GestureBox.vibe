@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { useTemplateRef } from '@usevibejs/ui';
-import { useDrag, useHover, usePress } from '@usevibejs/motion';
+import { useDrag, useMotion } from '@usevibejs/motion';
 
 const box = useTemplateRef<HTMLElement>('box');
-useHover(box);
-usePress(box);
+useMotion(box, { animate: { scale: 1 }, hover: { scale: 1.2 }, press: { scale: 0.9 }, transition: { duration: 0.2 } });
 useDrag(box, { snapToOrigin: true });
 </script>
 

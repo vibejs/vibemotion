@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from '@usevibejs/ui';
-import { useMotionStyle, useMotionValueState, useSpring, useTransform } from '@usevibejs/motion';
+import { computed, onScopeDispose, ref, useTemplateRef } from '@usevibejs/ui';
+import { useMotionAttrs, useMotionValue, useMotionStyle, useMotionValueState, useSpring, useTransform } from '@usevibejs/motion';
 import Button from '../components/ui/Button.vibe';
 import Slider from '../components/ui/Slider.vibe';
 import Label from '../components/ui/Label.vibe';
@@ -22,6 +22,18 @@ const x = useTransform(() => progress.get() * ((track.value?.clientWidth ?? 64) 
 // Motion writes the transform in its frame loop: no Vibe.js render per frame.
 useMotionStyle(ball, { x });
 
+// A real response trace, written to SVG by Motion rather than rendered through Vibe each frame.
+const graph = useTemplateRef<SVGElement>('graph');
+const trace = useMotionValue('M0 70');
+const samples: number[] = [];
+const unsubscribe = progress.on('change', (value) => {
+  samples.push(value);
+  if (samples.length > 160) samples.shift();
+  trace.set(samples.map((sample, index) => `${index ? 'L' : 'M'}${index * 3} ${70 - sample * 48}`).join(' '));
+});
+onScopeDispose(unsubscribe);
+useMotionAttrs(graph, { d: trace });
+
 // Explicit, opt-in reactive observation for the numeric readout only.
 const live = useMotionValueState(progress);
 const readout = computed(() => live.value.toFixed(3));
@@ -32,6 +44,13 @@ const readout = computed(() => live.value.toFixed(3));
     <div class="space-y-4">
       <div ref="track" class="relative h-16 rounded-lg border bg-muted/40 p-2">
         <div ref="ball" data-testid="spring-ball" class="size-12 rounded-full bg-primary shadow-sm"></div>
+      </div>
+      <div class="response-plot rounded-lg border px-3 py-2">
+        <div class="mb-1 flex justify-between font-mono text-[10px] text-muted-foreground"><span>SPRING RESPONSE</span><span>position / time</span></div>
+        <svg viewBox="0 0 480 88" class="h-20 w-full" role="img" aria-label="Live spring position over recent animation frames">
+          <path d="M0 22H480 M0 70H480" stroke="currentColor" opacity="0.12" fill="none" />
+          <path ref="graph" fill="none" stroke="currentColor" stroke-width="1.8" class="text-primary" />
+        </svg>
       </div>
       <div class="flex items-center gap-3">
         <Button data-testid="spring-toggle" @click="right = !right">Move {{ right ? 'left' : 'right' }}</Button>

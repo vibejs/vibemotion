@@ -1,0 +1,43 @@
+{
+  "external": [
+    "@usevibejs/ui"
+  ],
+  "note": "Minified consumer bundles including Motion, excluding Vibe.js. Bytes, not package download size.",
+  "rows": [
+    {
+      "name": "reduced",
+      "bytes": 890,
+      "gzip": 539,
+      "brotli": 457,
+      "modules": 2
+    },
+    {
+      "name": "mini",
+      "bytes": 10759,
+      "gzip": 4288,
+      "brotli": 3883,
+      "modules": 43
+    },
+    {
+      "name": "hybrid",
+      "bytes": 68910,
+      "gzip": 24757,
+      "brotli": 22465,
+      "modules": 161
+    },
+    {
+      "name": "gestures",
+      "bytes": 120479,
+      "gzip": 39169,
+      "brotli": 35057,
+      "modules": 207
+    },
+    {
+      "name": "full",
+      "bytes": 170964,
+      "gzip": 56986,
+      "brotli": 50505,
+      "modules": 267
+    }
+  ]
+}

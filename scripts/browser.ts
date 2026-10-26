@@ -1,6 +1,7 @@
 // Real-browser verification of the demo application: animations, gestures, scroll, layout,
 // presence, route transitions, reduced motion and resource cleanup, in headless Chromium.
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium, type Page } from 'playwright';
 import { preview } from 'vite';
 
@@ -47,7 +48,13 @@ await context.addInitScript(() => {
     return remove.call(this, type, listener, options);
   };
   for (const name of ['ResizeObserver', 'IntersectionObserver'] as const) {
-    const Native = window[name] as unknown as { new (cb: never, o?: never): { observe(...a: never[]): void; unobserve(...a: never[]): void; disconnect(): void }; prototype: object };
+    const Native = window[name] as unknown as {
+      new (
+        cb: never,
+        o?: never,
+      ): { observe(...a: never[]): void; unobserve(...a: never[]): void; disconnect(): void };
+      prototype: object;
+    };
     class Counted extends Native {
       targets = new Set<unknown>();
       observe(...args: never[]) {
@@ -69,14 +76,24 @@ await context.addInitScript(() => {
     }
     Object.defineProperty(window, name, { value: Counted, configurable: true });
   }
-  (window as unknown as { __counts: typeof counts }).__counts = counts;
+  (window as unknown as { vibemotionCounts: typeof counts }).vibemotionCounts = counts;
 });
 
 context.setDefaultTimeout(5000);
 const page = await context.newPage();
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('console', (message) => {
-  if (message.type() === 'error') errors.push(message.text());
+  if (message.type() === 'error') {
+    errors.push(message.text());
+    for (const argument of message.args())
+      void argument
+        .evaluate((value) => ({
+          message: value?.message,
+          cause: value?.cause?.message,
+          stack: value?.cause?.stack,
+        }))
+        .then((detail) => console.log('Browser error detail', detail));
+  }
 });
 
 async function check(name: string, fn: () => Promise<void>) {
@@ -86,7 +103,9 @@ async function check(name: string, fn: () => Promise<void>) {
     console.log(`  ✓ ${name}`);
   } catch (error) {
     failed.push(name);
-    console.log(`  ✗ ${name}\n    ${(error as Error).message.split('\n').slice(0, 6).join('\n    ')}`);
+    console.log(
+      `  ✗ ${name}\n    ${(error as Error).message.split('\n').slice(0, 6).join('\n    ')}`,
+    );
   }
 }
 
@@ -101,13 +120,27 @@ async function until(fn: () => Promise<boolean>, label: string, timeout = 3000) 
 
 /** The decomposed 2D transform of the first element matching `selector`. */
 async function transform(selector: string, p: Page = page) {
-  return p.locator(selector).first().evaluate((el) => {
-    const m = new DOMMatrixReadOnly(getComputedStyle(el).transform === 'none' ? undefined : getComputedStyle(el).transform);
-    return { x: m.m41, y: m.m42, scaleX: Math.hypot(m.m11, m.m12), scaleY: Math.hypot(m.m21, m.m22), identity: m.isIdentity };
-  });
+  return p
+    .locator(selector)
+    .first()
+    .evaluate((el) => {
+      const m = new DOMMatrixReadOnly(
+        getComputedStyle(el).transform === 'none' ? undefined : getComputedStyle(el).transform,
+      );
+      return {
+        x: m.m41,
+        y: m.m42,
+        scaleX: Math.hypot(m.m11, m.m12),
+        scaleY: Math.hypot(m.m21, m.m22),
+        identity: m.isIdentity,
+      };
+    });
 }
 const opacity = (selector: string, index = 0) =>
-  page.locator(selector).nth(index).evaluate((el) => Number(getComputedStyle(el).opacity));
+  page
+    .locator(selector)
+    .nth(index)
+    .evaluate((el) => Number(getComputedStyle(el).opacity));
 const text = (selector: string) => page.locator(selector).first().innerText();
 const count = (selector: string) => page.locator(selector).count();
 const center = async (selector: string) => {
@@ -132,7 +165,10 @@ try {
     await page.waitForTimeout(80);
     const mid = await transform('[data-testid="spring-ball"]');
     assert(mid.x > start.x + 1, `ball moved (${start.x} → ${mid.x})`);
-    await until(async () => (await text('[data-testid="spring-value"]')) === '1.000', 'spring settles at 1');
+    await until(
+      async () => (await text('[data-testid="spring-value"]')) === '1.000',
+      'spring settles at 1',
+    );
     const end = await transform('[data-testid="spring-ball"]');
     assert(end.x > mid.x, 'ball reached the far end');
   });
@@ -145,16 +181,28 @@ try {
       const values: number[] = [];
       const frame = () => new Promise((r) => requestAnimationFrame(r));
       toggle.click(); // towards 0
-      for (let i = 0; i < 6; i++) await frame(), values.push(Number(output.textContent));
+      for (let i = 0; i < 6; i++) {
+        await frame();
+        values.push(Number(output.textContent));
+      }
       toggle.click(); // towards 1 while still moving
-      for (let i = 0; i < 30; i++) await frame(), values.push(Number(output.textContent));
+      for (let i = 0; i < 30; i++) {
+        await frame();
+        values.push(Number(output.textContent));
+      }
       return values;
     });
     const mid = samples[5]!;
     assert(mid > 0.05 && mid < 0.99, `retargeted in flight (${mid})`);
     const steps = samples.slice(1).map((v, i) => Math.abs(v - samples[i]!));
-    assert(Math.max(...steps) < 0.2, `continuous, no jump (max step ${Math.max(...steps).toFixed(3)})`);
-    await until(async () => (await text('[data-testid="spring-value"]')) === '1.000', 'settles again');
+    assert(
+      Math.max(...steps) < 0.2,
+      `continuous, no jump (max step ${Math.max(...steps).toFixed(3)})`,
+    );
+    await until(
+      async () => (await text('[data-testid="spring-value"]')) === '1.000',
+      'settles again',
+    );
   });
 
   await check('hover: state and scale while hovered, reverts after', async () => {
@@ -166,7 +214,10 @@ try {
     await until(async () => (await transform(button)).scaleX > 1.03, 'scaled up');
     await page.mouse.move(5, 5);
     await until(async () => (await text('[data-testid="hover-state"]')) === 'false', 'hover end');
-    await until(async () => Math.abs((await transform(button)).scaleX - 1) < 0.005, 'scale reverts');
+    await until(
+      async () => Math.abs((await transform(button)).scaleX - 1) < 0.005,
+      'scale reverts',
+    );
   });
 
   await check('press: pointer press scales down, release restores', async () => {
@@ -184,9 +235,15 @@ try {
   await check('press: keyboard Enter on the focused button', async () => {
     await page.locator('[data-testid="press-button"] button').focus();
     await page.keyboard.down('Enter');
-    await until(async () => (await text('[data-testid="press-state"]')) === 'true', 'keyboard press');
+    await until(
+      async () => (await text('[data-testid="press-state"]')) === 'true',
+      'keyboard press',
+    );
     await page.keyboard.up('Enter');
-    await until(async () => (await text('[data-testid="press-state"]')) === 'false', 'keyboard release');
+    await until(
+      async () => (await text('[data-testid="press-state"]')) === 'false',
+      'keyboard release',
+    );
   });
 
   await check('keyframes: like button runs a keyframe animation and still clicks', async () => {
@@ -199,7 +256,10 @@ try {
 
   await check('variants + inView: cards reveal when scrolled into view', async () => {
     await scrollTo('[data-demo="cards"]');
-    await until(async () => (await opacity('[data-testid="motion-card"]', 2)) > 0.99, 'third card visible');
+    await until(
+      async () => (await opacity('[data-testid="motion-card"]', 2)) > 0.99,
+      'third card visible',
+    );
   });
 
   await check('stagger + controls: pause freezes, resume finishes', async () => {
@@ -215,31 +275,45 @@ try {
     assert.equal(a, b, 'paused animation does not advance');
     assert(a < 1, 'last item not finished while paused');
     await page.click('[data-testid="stagger-play"]');
-    await until(async () => (await text('[data-testid="stagger-state"]')) === 'finished', 'finished state');
+    await until(
+      async () => (await text('[data-testid="stagger-state"]')) === 'finished',
+      'finished state',
+    );
     assert((await opacity('[data-testid="stagger-list"] li', 6)) > 0.99);
   });
 
   console.log('Scroll and viewport');
   await check('scroll reveal: tiles below the fold reveal on scroll', async () => {
-    await page.locator('[data-demo="reveal"]').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page
+      .locator('[data-demo="reveal"]')
+      .evaluate((el) => el.scrollIntoView({ block: 'start' }));
     const last = page.locator('[data-testid="reveal-tile"]').last();
     await last.scrollIntoViewIfNeeded();
     await until(async () => (await last.getAttribute('data-in-view')) === 'true', 'in view state');
-    await until(async () => Number(await last.evaluate((el) => getComputedStyle(el).opacity)) > 0.99, 'opacity 1', 4000);
+    await until(
+      async () => Number(await last.evaluate((el) => getComputedStyle(el).opacity)) > 0.99,
+      'opacity 1',
+      4000,
+    );
   });
 
-  await check('parallax: element-relative scroll progress moves layers in opposite directions', async () => {
-    await page.locator('[data-testid="parallax"]').evaluate((el) => el.scrollIntoView({ block: 'end' }));
-    await page.waitForTimeout(120);
-    const a = await transform('[data-testid="parallax-front"]');
-    const backA = await transform('[data-testid="parallax-back"]');
-    await page.mouse.wheel(0, 300);
-    await page.waitForTimeout(250);
-    const b = await transform('[data-testid="parallax-front"]');
-    const backB = await transform('[data-testid="parallax-back"]');
-    assert(b.y < a.y - 5, `front layer moved up (${a.y} → ${b.y})`);
-    assert(backB.y > backA.y + 2, `back layer moved down (${backA.y} → ${backB.y})`);
-  });
+  await check(
+    'parallax: element-relative scroll progress moves layers in opposite directions',
+    async () => {
+      await page
+        .locator('[data-testid="parallax"]')
+        .evaluate((el) => el.scrollIntoView({ block: 'end' }));
+      await page.waitForTimeout(120);
+      const a = await transform('[data-testid="parallax-front"]');
+      const backA = await transform('[data-testid="parallax-back"]');
+      await page.mouse.wheel(0, 300);
+      await page.waitForTimeout(250);
+      const b = await transform('[data-testid="parallax-front"]');
+      const backB = await transform('[data-testid="parallax-back"]');
+      assert(b.y < a.y - 5, `front layer moved up (${a.y} → ${b.y})`);
+      assert(backB.y > backA.y + 2, `back layer moved down (${backA.y} → ${backB.y})`);
+    },
+  );
 
   await check('scroll progress bar: page scroll drives scaleX', async () => {
     const t = await transform('[data-testid="scroll-progress"]');
@@ -248,7 +322,10 @@ try {
 
   await check('horizontal container: custom container x progress', async () => {
     await page.locator('[data-testid="strip"]').evaluate((el) => (el.scrollLeft = el.scrollWidth));
-    await until(async () => (await transform('[data-testid="strip-progress"]')).scaleX > 0.95, 'x progress');
+    await until(
+      async () => (await transform('[data-testid="strip-progress"]')).scaleX > 0.95,
+      'x progress',
+    );
   });
 
   console.log('Gestures');
@@ -281,10 +358,14 @@ try {
     assert(after.x > atRelease.x + 5, `continued after release (${atRelease.x} → ${after.x})`);
     const area = await page.locator('[data-testid="drag-area"]').boundingBox();
     // Elastic overshoot springs back inside the constraint element.
-    await until(async () => {
-      const box = await page.locator('[data-testid="drag-free"]').boundingBox();
-      return !!area && !!box && box.x + box.width <= area.x + area.width + 1;
-    }, 'settled inside the constraints', 4000);
+    await until(
+      async () => {
+        const box = await page.locator('[data-testid="drag-free"]').boundingBox();
+        return !!area && !!box && box.x + box.width <= area.x + area.width + 1;
+      },
+      'settled inside the constraints',
+      4000,
+    );
   });
 
   await check('drag: axis lock and pixel constraints on the rail', async () => {
@@ -312,18 +393,30 @@ try {
   });
 
   console.log('Presence');
-  await check('drawer: stays mounted and inert during exit, removed after, focus restored', async () => {
-    await scrollTo('[data-demo="drawer"]');
-    await page.click('[data-testid="drawer-open"]');
-    await page.locator('[data-testid="drawer"]').waitFor();
-    await until(async () => Math.abs((await transform('[data-testid="drawer"]')).y) < 1, 'drawer open');
-    await page.click('[data-testid="drawer-close"]');
-    assert.equal(await count('[data-testid="drawer"]'), 1, 'still rendered while exiting');
-    assert.equal(await page.locator('[data-testid="drawer"]').getAttribute('inert'), '', 'inert while exiting');
-    await until(async () => (await count('[data-testid="drawer"]')) === 0, 'removed after exit');
-    const focused = await page.evaluate(() => document.activeElement?.getAttribute('data-testid'));
-    assert.equal(focused, 'drawer-open', 'focus returned to the trigger');
-  });
+  await check(
+    'drawer: stays mounted and inert during exit, removed after, focus restored',
+    async () => {
+      await scrollTo('[data-demo="drawer"]');
+      await page.click('[data-testid="drawer-open"]');
+      await page.locator('[data-testid="drawer"]').waitFor();
+      await until(
+        async () => Math.abs((await transform('[data-testid="drawer"]')).y) < 1,
+        'drawer open',
+      );
+      await page.click('[data-testid="drawer-close"]');
+      assert.equal(await count('[data-testid="drawer"]'), 1, 'still rendered while exiting');
+      assert.equal(
+        await page.locator('[data-testid="drawer"]').getAttribute('inert'),
+        '',
+        'inert while exiting',
+      );
+      await until(async () => (await count('[data-testid="drawer"]')) === 0, 'removed after exit');
+      const focused = await page.evaluate(() =>
+        document.activeElement?.getAttribute('data-testid'),
+      );
+      assert.equal(focused, 'drawer-open', 'focus returned to the trigger');
+    },
+  );
 
   await check('drawer: rapid toggles reverse the exit and never remove shown content', async () => {
     await page.click('[data-testid="drawer-open"]');
@@ -335,8 +428,15 @@ try {
     await page.locator('[data-testid="drawer-open"]').evaluate((el: HTMLElement) => el.click());
     await page.waitForTimeout(900);
     assert.equal(await count('[data-testid="drawer"]'), 1, 'drawer still present');
-    assert.equal(await page.locator('[data-testid="drawer"]').getAttribute('inert'), null, 'not inert');
-    assert(Math.abs((await transform('[data-testid="drawer"]')).y) < 1, 'back in the open position');
+    assert.equal(
+      await page.locator('[data-testid="drawer"]').getAttribute('inert'),
+      null,
+      'not inert',
+    );
+    assert(
+      Math.abs((await transform('[data-testid="drawer"]')).y) < 1,
+      'back in the open position',
+    );
     await page.click('[data-testid="drawer-close"]');
     await until(async () => (await count('[data-testid="drawer"]')) === 0, 'closed');
   });
@@ -353,16 +453,22 @@ try {
     await until(async () => (await count('[data-testid="drawer"]')) === 0, 'dismissed by drag');
   });
 
-  await check('notifications: exiting toast stays until its exit ends, then the stack closes', async () => {
-    await scrollTo('[data-demo="toasts"]');
-    for (let i = 0; i < 3; i++) await page.click('[data-testid="toast-success"]');
-    await until(async () => (await count('[data-testid="toast"]')) === 3, 'three toasts');
-    await page.waitForTimeout(400);
-    await page.locator('[data-testid="toast-dismiss"]').nth(1).click();
-    assert.equal(await count('[data-testid="toast"]'), 3, 'exiting toast still rendered');
-    assert.equal(await page.locator('[data-testid="toast"]').nth(1).getAttribute('data-exiting'), 'true');
-    await until(async () => (await count('[data-testid="toast"]')) === 2, 'removed after exit');
-  });
+  await check(
+    'notifications: exiting toast stays until its exit ends, then the stack closes',
+    async () => {
+      await scrollTo('[data-demo="toasts"]');
+      for (let i = 0; i < 3; i++) await page.click('[data-testid="toast-success"]');
+      await until(async () => (await count('[data-testid="toast"]')) === 3, 'three toasts');
+      await page.waitForTimeout(400);
+      await page.locator('[data-testid="toast-dismiss"]').nth(1).click();
+      assert.equal(await count('[data-testid="toast"]'), 3, 'exiting toast still rendered');
+      assert.equal(
+        await page.locator('[data-testid="toast"]').nth(1).getAttribute('data-exiting'),
+        'true',
+      );
+      await until(async () => (await count('[data-testid="toast"]')) === 2, 'removed after exit');
+    },
+  );
 
   await check('notifications: a re-added item during exit reverses (list presence)', async () => {
     // Dismiss all, then quickly add: new keys enter while old ones exit; nothing duplicates.
@@ -381,15 +487,26 @@ try {
     await page.waitForTimeout(40);
     const mid = await transform('[data-testid="tab-indicator"]');
     assert(!mid.identity, 'indicator projected from the previous trigger');
-    await until(async () => (await transform('[data-testid="tab-indicator"]')).identity, 'indicator settles');
-    const parent = await page.locator('[data-testid="tab-indicator"]').evaluate((el) => el.parentElement?.textContent?.trim());
+    await until(
+      async () => (await transform('[data-testid="tab-indicator"]')).identity,
+      'indicator settles',
+    );
+    const parent = await page
+      .locator('[data-testid="tab-indicator"]')
+      .evaluate((el) => el.parentElement?.textContent?.trim());
     assert.equal(parent, 'Settings');
   });
 
   await check('tabs: keyboard navigation still works', async () => {
     await page.locator('[data-testid="tabs-list"] button').nth(2).focus();
     await page.keyboard.press('ArrowLeft');
-    await until(async () => (await page.locator('[data-testid="tab-indicator"]').evaluate((el) => el.parentElement?.textContent?.trim())) === 'Activity', 'moved by keyboard');
+    await until(
+      async () =>
+        (await page
+          .locator('[data-testid="tab-indicator"]')
+          .evaluate((el) => el.parentElement?.textContent?.trim())) === 'Activity',
+      'moved by keyboard',
+    );
   });
 
   await check('shared element: card morphs into the detail panel and back', async () => {
@@ -400,25 +517,37 @@ try {
     await page.waitForTimeout(30);
     const mid = await transform('[data-testid="shared-detail"]');
     assert(!mid.identity, 'detail starts from the card box');
-    await until(async () => (await transform('[data-testid="shared-detail"]')).identity, 'detail settles', 3000);
+    await until(
+      async () => (await transform('[data-testid="shared-detail"]')).identity,
+      'detail settles',
+      3000,
+    );
     const focused = await page.evaluate(() => document.activeElement?.getAttribute('data-testid'));
     assert.equal(focused, 'shared-close', 'focus moved into the panel');
     await page.keyboard.press('Escape');
     await until(async () => (await count('[data-testid="shared-detail"]')) === 0, 'detail removed');
-    await until(async () => (await transform('[data-testid="shared-card"]')).identity, 'card settles');
+    await until(
+      async () => (await transform('[data-testid="shared-card"]')).identity,
+      'card settles',
+    );
     const after = await page.locator('[data-testid="shared-card"]').first().boundingBox();
     assert(before && after && Math.abs(before.width - after.width) < 1, 'card back to its size');
   });
 
   await check('reorder: shuffle animates positions; interruptions settle cleanly', async () => {
     await scrollTo('[data-demo="reorder"]');
-    const order = () => page.locator('[data-testid="reorder-grid"] li').evaluateAll((els) => els.map((el) => el.getAttribute('data-tile')).join(','));
+    const order = () =>
+      page
+        .locator('[data-testid="reorder-grid"] li')
+        .evaluateAll((els) => els.map((el) => el.getAttribute('data-tile')).join(','));
     const initial = await order();
     let moved = false;
     for (let attempt = 0; attempt < 3 && !moved; attempt++) {
       await page.click('[data-testid="reorder-shuffle"]');
       await page.waitForTimeout(40);
-      const transforms = await page.locator('[data-testid="reorder-grid"] li').evaluateAll((els) => els.filter((el) => getComputedStyle(el).transform !== 'none').length);
+      const transforms = await page
+        .locator('[data-testid="reorder-grid"] li')
+        .evaluateAll((els) => els.filter((el) => getComputedStyle(el).transform !== 'none').length);
       moved = transforms > 0 && (await order()) !== initial;
     }
     assert(moved, 'tiles reordered with transforms in flight');
@@ -427,12 +556,17 @@ try {
     await page.click('[data-testid="reorder-shuffle"]');
     await page.waitForTimeout(30);
     await page.click('[data-testid="reorder-columns"]');
-    await until(async () => (await text('[data-testid="layout-animating"]')) === 'false', 'animation finished', 4000);
-    const residual = await page.locator('[data-testid="reorder-grid"] li').evaluateAll((els) =>
-      els.filter((el) => {
-        const t = getComputedStyle(el).transform;
-        return t !== 'none' && !new DOMMatrixReadOnly(t).isIdentity;
-      }).length,
+    await until(
+      async () => (await text('[data-testid="layout-animating"]')) === 'false',
+      'animation finished',
+      4000,
+    );
+    const residual = await page.locator('[data-testid="reorder-grid"] li').evaluateAll(
+      (els) =>
+        els.filter((el) => {
+          const t = getComputedStyle(el).transform;
+          return t !== 'none' && !new DOMMatrixReadOnly(t).isIdentity;
+        }).length,
     );
     assert.equal(residual, 0, 'no tile left transformed');
   });
@@ -441,7 +575,10 @@ try {
     await scrollTo('[data-demo="dialog"]');
     await page.click('[data-testid="dialog-open"]');
     await until(async () => page.locator('dialog[open]').isVisible(), 'dialog open');
-    await until(async () => (await opacity('[data-testid="dialog-body"] [data-stagger]', 4)) > 0.99, 'content in');
+    await until(
+      async () => (await opacity('[data-testid="dialog-body"] [data-stagger]', 4)) > 0.99,
+      'content in',
+    );
     await page.keyboard.press('Escape');
     await until(async () => (await count('dialog[open]')) === 0, 'dialog closed');
   });
@@ -469,7 +606,10 @@ try {
     assert.equal(await text('[data-testid="presence-box"]'), 'Present');
     assert((await opacity('[data-testid="presence-box"]')) > 0.99);
     await page.click(toggle);
-    await until(async () => (await count('[data-testid="presence-box"]')) === 0, 'removed after exit');
+    await until(
+      async () => (await count('[data-testid="presence-box"]')) === 0,
+      'removed after exit',
+    );
     await page.click(toggle);
     await page.locator('[data-testid="presence-box"]').waitFor();
   });
@@ -477,7 +617,16 @@ try {
   await check('view transition: update applies (with or without API support)', async () => {
     const before = await page.locator('[data-testid="vt-row"]').getAttribute('class');
     await page.click('[data-testid="vt-toggle"]');
-    await until(async () => (await page.locator('[data-testid="vt-row"]').getAttribute('class')) !== before, 'row flipped');
+    await until(
+      async () => (await page.locator('[data-testid="vt-row"]').getAttribute('class')) !== before,
+      'row flipped',
+    );
+    await until(
+      async () =>
+        (await page.locator('[data-testid="vt-row"]').getAttribute('data-transitioning')) ===
+        'false',
+      'view playback finishes',
+    );
   });
 
   await check('view transition: fallback when the API is missing', async () => {
@@ -487,7 +636,9 @@ try {
     });
     await p.goto(origin + '/guide');
     await p.locator('[data-demo="view-transition"]').waitFor();
-    assert(/No View Transition API/.test(await p.locator('[data-demo="view-transition"]').innerText()));
+    assert(
+      /No View Transition API/.test(await p.locator('[data-demo="view-transition"]').innerText()),
+    );
     const before = await p.locator('[data-testid="vt-row"]').getAttribute('class');
     await p.click('[data-testid="vt-toggle"]');
     await p.waitForTimeout(100);
@@ -496,19 +647,22 @@ try {
   });
 
   console.log('Reduced motion');
-  await check('prefers-reduced-motion: transforms become instant, opacity still fades', async () => {
-    const p = await context.newPage();
-    await p.emulateMedia({ reducedMotion: 'reduce' });
-    await p.goto(origin + '/');
-    await p.locator('[data-demo="drawer"]').scrollIntoViewIfNeeded();
-    await p.click('[data-testid="drawer-open"]');
-    await p.locator('[data-testid="drawer"]').waitFor();
-    await p.waitForTimeout(50);
-    const t = await transform('[data-testid="drawer"]', p);
-    assert(Math.abs(t.y) < 0.5, `drawer jumped into place (${t.y})`);
-    assert(/Reduced motion on/.test(await p.getByRole('banner').innerText()));
-    await p.close();
-  });
+  await check(
+    'prefers-reduced-motion: transforms become instant, opacity still fades',
+    async () => {
+      const p = await context.newPage();
+      await p.emulateMedia({ reducedMotion: 'reduce' });
+      await p.goto(origin + '/');
+      await p.locator('[data-demo="drawer"]').scrollIntoViewIfNeeded();
+      await p.click('[data-testid="drawer-open"]');
+      await p.locator('[data-testid="drawer"]').waitFor();
+      await p.waitForTimeout(50);
+      const t = await transform('[data-testid="drawer"]', p);
+      assert(Math.abs(t.y) < 0.5, `drawer jumped into place (${t.y})`);
+      assert(/Reduced motion on/.test(await p.getByRole('banner').innerText()));
+      await p.close();
+    },
+  );
 
   await check('app-level switch: forcing reduced motion through provideMotionConfig', async () => {
     await home();
@@ -524,7 +678,11 @@ try {
   await check('route cycles do not accumulate listeners or observers', async () => {
     await home();
     await page.waitForTimeout(300);
-    const read = () => page.evaluate(() => ({ ...(window as unknown as { __counts: { listeners: number; observers: number } }).__counts }));
+    const read = () =>
+      page.evaluate(() => ({
+        ...(window as unknown as { vibemotionCounts: { listeners: number; observers: number } })
+          .vibemotionCounts,
+      }));
     const go = async (path: string, ready: string) => {
       await page.click(`nav[aria-label="Main"] a[href="${path}"]`);
       await page.locator(ready).waitFor();
@@ -538,7 +696,132 @@ try {
       await go('/', '[data-demo="spring"]');
     }
     const after = await read();
-    assert.deepEqual(after, baseline, `listeners/observers stable (${JSON.stringify(baseline)} → ${JSON.stringify(after)})`);
+    assert.deepEqual(
+      after,
+      baseline,
+      `listeners/observers stable (${JSON.stringify(baseline)} → ${JSON.stringify(after)})`,
+    );
+  });
+
+  await check('layout teardown: repeated mount cycles release old projected nodes', async () => {
+    await home();
+    await scrollTo('[data-demo="reorder"]');
+    await page.click('[data-testid="reorder-shuffle"]');
+    await until(
+      async () => (await text('[data-testid="layout-animating"]')) === 'false',
+      'layout settles',
+    );
+    await page.evaluate(() => {
+      Object.assign(window, {
+        layoutWeakRefs: [...document.querySelectorAll('[data-testid="reorder-grid"] li')].map(
+          (el) => new WeakRef(el),
+        ),
+      });
+    });
+    await page.click('nav[aria-label="Main"] a[href="/guide"]');
+    await page.locator('[data-demo="presence"]').waitFor();
+    // Complete another render cycle: Vibe's lazy template-ref cleanup may retain the
+    // latest disposed branch until the next render. Older branches must never accumulate.
+    await page.click('nav[aria-label="Main"] a[href="/"]');
+    await page.locator('[data-demo="spring"]').waitFor();
+    await page.waitForTimeout(400);
+    const session = await context.newCDPSession(page);
+    await session.send('HeapProfiler.collectGarbage');
+    const retained = await page.evaluate(
+      () =>
+        (window as unknown as { layoutWeakRefs: WeakRef<Element>[] }).layoutWeakRefs.filter((ref) =>
+          ref.deref(),
+        ).length,
+    );
+    assert.equal(retained, 0, 'old layout elements released after scope disposal');
+    await session.detach();
+  });
+
+  await check('press cancellation: release outside restores the resting state', async () => {
+    await home();
+    const selector = '[data-testid="press-button"] button';
+    await scrollTo(selector);
+    const c = await center(selector);
+    await page.mouse.move(c.x, c.y);
+    await page.mouse.down();
+    await until(async () => (await text('[data-testid="press-state"]')) === 'true', 'press begins');
+    await page.mouse.move(4, 4);
+    await page.mouse.up();
+    await until(
+      async () => (await text('[data-testid="press-state"]')) === 'false',
+      'press cancels',
+    );
+  });
+
+  await check('modal drawer traps keyboard focus in the native dialog', async () => {
+    await scrollTo('[data-demo="drawer"]');
+    await page.click('[data-testid="drawer-open"]');
+    await until(
+      async () => Math.abs((await transform('[data-testid="drawer"]')).y) < 1,
+      'drawer settled for keyboard navigation',
+    );
+    await page.locator('[data-testid="drawer-close"]').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Cancel');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.getAttribute('data-testid')),
+      'drawer-close',
+    );
+    await page.locator('[data-testid="drawer-open"]').focus();
+    assert.notEqual(
+      await page.evaluate(() => document.activeElement?.getAttribute('data-testid')),
+      'drawer-open',
+      'background control remains inert under native modal',
+    );
+    await page.locator('[data-testid="drawer-close"]').focus();
+    await page.keyboard.press('Escape');
+    await until(async () => (await count('[data-testid="drawer"]')) === 0, 'drawer closes');
+  });
+
+  await check('touch drag: physical touch input follows the pointer and ends cleanly', async () => {
+    const touchContext = await browser.newContext({
+      viewport: { width: 1100, height: 900 },
+      hasTouch: true,
+      isMobile: false,
+    });
+    const touchPage = await touchContext.newPage();
+    touchPage.on('pageerror', (error) => errors.push(error.message));
+    await touchPage.goto(origin);
+    await touchPage.locator('[data-testid="drag-free"]').scrollIntoViewIfNeeded();
+    const box = await touchPage.locator('[data-testid="drag-free"]').boundingBox();
+    assert(box);
+    const session = await touchContext.newCDPSession(touchPage);
+    const x = box.x + box.width / 2,
+      y = box.y + box.height / 2;
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 8; i++)
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: x + i * 10, y: y + i * 3 }],
+      });
+    const moved = await transform('[data-testid="drag-free"]', touchPage);
+    assert(moved.x > 40, `touch moved card (${moved.x})`);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+    await touchPage.waitForFunction(
+      () => document.querySelector('[data-testid="drag-state"]')?.textContent?.trim() === 'false',
+    );
+    await touchContext.close();
+  });
+
+  await check('responsive layout and visual artifacts', async () => {
+    await home();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.waitForTimeout(300);
+    await mkdir('artifacts/screenshots', { recursive: true });
+    await page.screenshot({ path: 'artifacts/screenshots/desktop.png' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      'no horizontal overflow on mobile',
+    );
+    await page.screenshot({ path: 'artifacts/screenshots/mobile.png' });
+    await page.setViewportSize({ width: 1280, height: 900 });
   });
 
   await check('no page errors', async () => {
@@ -549,5 +832,10 @@ try {
   await server.close();
 }
 
+await mkdir('reports', { recursive: true });
+await writeFile(
+  'reports/browser.json',
+  JSON.stringify({ browser: 'Chromium', passed, failed, errors }, null, 2) + '\n',
+);
 console.log(`\n${passed.length} passed, ${failed.length} failed`);
 if (failed.length) process.exit(1);

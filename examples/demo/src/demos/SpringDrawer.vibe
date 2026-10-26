@@ -6,6 +6,7 @@ import Separator from '../components/ui/Separator.vibe';
 
 const open = ref(false);
 const panel = useTemplateRef<HTMLElement>('panel');
+const shell = useTemplateRef<HTMLDialogElement>('shell');
 const backdrop = useTemplateRef<HTMLElement>('backdrop');
 const titleId = useId();
 
@@ -15,6 +16,7 @@ const presence = usePresence(open, panel, {
   initial: { y: '100%' },
   animate: { y: 0, transition: spring },
   exit: { y: '100%', transition: { ...spring, stiffness: 420 } },
+  onExitComplete: () => shell.value?.close(),
 });
 usePresence(open, backdrop, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.2 } });
 
@@ -30,6 +32,10 @@ useDrag(panel, {
   },
 });
 
+watch(shell, (element) => {
+  if (element && !element.open) element.showModal();
+}, { flush: 'post' });
+
 watch(open, async (value) => {
   if (!value) return;
   await nextTick();
@@ -41,13 +47,12 @@ watch(open, async (value) => {
   <div>
     <Button data-testid="drawer-open" :aria-expanded="open" @click="open = true">Open drawer</Button>
     <p class="mt-3 text-xs text-muted-foreground">Toggle quickly: an interrupted exit reverses from where it is.</p>
-    <div v-if="presence.isPresent.value" class="fixed inset-0 z-50" @keydown.esc="open = false">
+    <dialog v-if="presence.isPresent.value" ref="shell" class="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 text-foreground" :aria-labelledby="titleId" @cancel.prevent="open = false">
       <div ref="backdrop" class="absolute inset-0 bg-black/40" @click="open = false"></div>
       <div
         ref="panel"
+        tabindex="-1"
         data-testid="drawer"
-        role="dialog"
-        aria-modal="true"
         :aria-labelledby="titleId"
         class="absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-2xl border bg-background p-6 shadow-2xl"
       >
@@ -60,6 +65,6 @@ watch(open, async (value) => {
           <Button variant="outline" @click="open = false">Cancel</Button>
         </div>
       </div>
-    </div>
+    </dialog>
   </div>
 </template>

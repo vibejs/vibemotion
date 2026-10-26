@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, useTemplateRef } from '@usevibejs/ui';
+import { computed, nextTick, onScopeDispose, ref, shallowRef, useTemplateRef } from '@usevibejs/ui';
 import { stagger, useAnimate, useLayoutMotion } from '@usevibejs/motion';
 import Button from '../components/ui/Button.vibe';
 import BenchBox from '../bench/BenchBox.vibe';
@@ -25,22 +25,34 @@ const stage = useTemplateRef<HTMLElement>('stage');
 const animate = useAnimate(stage);
 const layout = useLayoutMotion(stage, { transition: { duration: 0.4 } });
 const order = ref<number[]>([]);
+let disposed = false;
+const pendingFrames = new Map<number, () => void>();
+onScopeDispose(() => {
+  disposed = true;
+  for (const [id, resolve] of pendingFrames) { cancelAnimationFrame(id); resolve(); }
+  pendingFrames.clear();
+});
 
 /** Records requestAnimationFrame intervals while `work` runs, for `duration` ms. */
 function sample(duration: number, work: (elapsed: number) => void = () => {}): Promise<number[]> {
+  if (disposed) return Promise.resolve([]);
   return new Promise((resolve) => {
     const frames: number[] = [];
     const start = performance.now();
     let last = start;
+    let id = 0;
+    const schedule = () => { id = requestAnimationFrame(tick); pendingFrames.set(id, () => resolve(frames)); };
     const tick = (now: number) => {
+      pendingFrames.delete(id);
+      if (disposed) { resolve(frames); return; }
       frames.push(now - last);
       last = now;
       if (now - start < duration) {
         work(now - start);
-        requestAnimationFrame(tick);
+        schedule();
       } else resolve(frames.slice(1));
     };
-    requestAnimationFrame(tick);
+    schedule();
   });
 }
 
@@ -69,6 +81,7 @@ async function prepare(n: number, nextMode: typeof mode.value) {
 }
 
 async function run(scenario: string) {
+  if (disposed || running.value) return;
   running.value = true;
   const [name, size] = scenario.split(':') as [string, string];
   const n = Number(size);
@@ -109,19 +122,29 @@ async function run(scenario: string) {
       await layout.update(() => {
         order.value = [...order.value].reverse();
       });
-      await sample(120);
+      frames.push(...await sample(120));
     }
     setup = performance.now() - t0;
-    frames = await sample(600);
+    frames.push(...await sample(600));
   } else if (name === 'gestures') {
     const t0 = performance.now();
     await prepare(n, 'gestures');
     setup = performance.now() - t0;
-    frames = await sample(1000);
+    const targets = [...stage.value!.querySelectorAll('[data-gesture-box]')];
+    let iteration = 0;
+    frames = await sample(1000, () => {
+      for (const [index, element] of targets.entries()) {
+        const active = iteration % 12 < 6;
+        element.dispatchEvent(new PointerEvent(active ? 'pointerenter' : 'pointerleave', { pointerType: 'mouse', pointerId: index + 1, isPrimary: true }));
+        element.dispatchEvent(new PointerEvent(active ? 'pointerdown' : 'pointerup', { bubbles: true, pointerType: 'mouse', pointerId: index + 1, isPrimary: true }));
+      }
+      iteration++;
+    });
   }
+  if (disposed) return;
   results.value = [...results.value, summarize(scenario, setup, frames)];
   running.value = false;
-  (window as unknown as { __bench: Result[] }).__bench = results.value;
+  (window as unknown as { vibemotionBench: Result[] }).vibemotionBench = results.value;
 }
 
 const output = computed(() => JSON.stringify(results.value, null, 2));

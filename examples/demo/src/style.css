@@ -30,3 +30,22 @@ body {
 .grab:active {
   cursor: grabbing;
 }
+
+/* Motion lab: cool paper, ink and a restrained blue signal. */
+:root {
+  --background: #fbfcff;
+  --foreground: #1b2136;
+  --card: #fff;
+  --card-foreground: #1b2136;
+  --primary: #4d61c8;
+  --primary-foreground: #fff;
+  --muted: #f0f3fa;
+  --muted-foreground: #606b82;
+  --border: #e2e6f0;
+  --input: #e2e6f0;
+  --ring: #6578cf;
+}
+.response-plot {
+  background-image: linear-gradient(to right, #e2e6f066 1px, transparent 1px);
+  background-size: 24px 100%;
+}
