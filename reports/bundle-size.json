@@ -34,9 +34,9 @@
     },
     {
       "name": "full",
-      "bytes": 170964,
-      "gzip": 56986,
-      "brotli": 50505,
+      "bytes": 171567,
+      "gzip": 57183,
+      "brotli": 50618,
       "modules": 267
     }
   ]

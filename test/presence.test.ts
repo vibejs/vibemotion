@@ -17,6 +17,7 @@ describe('usePresence in a real .vibe component', () => {
     const root = wrapper.element as Element;
     await flushPromises();
     expect(boxes(root)).toBe(1);
+    await frames(150); // Let enter finish: an exit from opacity 0 to 0 completes immediately.
     await wrapper.setProps({ show: false });
     await flushPromises();
     expect(boxes(root)).toBe(1);
