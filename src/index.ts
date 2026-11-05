@@ -57,6 +57,8 @@ export type {
 } from './presence.ts';
 export { useRouteTransition } from './route.ts';
 export type { RouterHooks, RouteTransitionOptions } from './route.ts';
+export { useRouteClass } from './route-class.ts';
+export type { RouteClassOptions } from './route-class.ts';
 
 // Motion utilities, re-exported so applications need no direct `motion` dependency.
 export {

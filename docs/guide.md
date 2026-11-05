@@ -289,6 +289,11 @@ uses snapshot crossfades when supported, with ordinary-animation fallback. Guard
 failure restores the old target. Apps still own route focus management and document
 titles; focus the new page heading or main landmark after successful navigation.
 
+`useRouteClass(router, target, { className })` is the class-based alternative.
+It adds one CSS class for the duration of a different-path navigation and removes
+it after the next flush. It is not a transition component and it does not animate.
+See [Route class](route-class.md).
+
 ## Reduced motion and accessibility
 
 `useReducedMotion()` combines `prefers-reduced-motion` with the nearest config:
@@ -356,6 +361,7 @@ content mapper for real prop/template checking.
 | `useLayoutMotion(scope?, options?)` | update, isAnimating, stop |
 | `useViewTransition()` | start, isTransitioning, stop |
 | `useRouteTransition(router, target, options?)` | stop |
+| `useRouteClass(router, target, options?)` | active, stop |
 | `useReducedMotion()` | computed preference ref |
 | `provideMotionConfig(config)` / `motionConfigKey` | component/app configuration |
 

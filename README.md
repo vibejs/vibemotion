@@ -71,6 +71,7 @@ adapter. [Measurements](reports/bundle-size.json) include Motion in consumer bun
 ## Documentation
 
 - [Handbook and API reference](docs/guide.md)
+- [Route class](docs/route-class.md)
 - [Architecture and framework constraints](docs/decisions/0001-architecture.md)
 - [Performance and reproducible measurements](docs/performance.md)
 - [Compatibility research](docs/RESEARCH.md)
